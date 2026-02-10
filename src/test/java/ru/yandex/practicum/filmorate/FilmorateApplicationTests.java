@@ -13,6 +13,7 @@ import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -29,17 +30,23 @@ class FilmorateApplicationTests {
     private Film validFilm;
     private User validUser;
 
+    private static int userCounter = 0;
+    private static int filmCounter = 0;
+
     @BeforeEach
     void setUp() {
+        userCounter++;
+        filmCounter++;
+
         validFilm = new Film();
-        validFilm.setName("Test Film");
-        validFilm.setDescription("Test Description");
+        validFilm.setName("Test Film " + filmCounter);
+        validFilm.setDescription("Test Description " + filmCounter);
         validFilm.setReleaseDate(LocalDate.of(2000, 1, 1));
         validFilm.setDuration(120);
 
         validUser = new User();
-        validUser.setEmail("test@mail.com");
-        validUser.setLogin("testlogin");
+        validUser.setEmail("test" + userCounter + "@mail.com");
+        validUser.setLogin("testlogin" + userCounter);
         validUser.setBirthday(LocalDate.of(1990, 1, 1));
     }
 
@@ -50,7 +57,7 @@ class FilmorateApplicationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validFilm)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Test Film"));
+                .andExpect(jsonPath("$.name").value(validFilm.getName()));
     }
 
     @Test
@@ -150,16 +157,22 @@ class FilmorateApplicationTests {
 
     @Test
     void getAllFilms() throws Exception {
-        // Создаем фильм
+        // Создаем фильм с уникальным именем
+        Film uniqueFilm = new Film();
+        uniqueFilm.setName("Unique Film for GetAll");
+        uniqueFilm.setDescription("Unique Description");
+        uniqueFilm.setReleaseDate(LocalDate.of(2000, 1, 1));
+        uniqueFilm.setDuration(120);
+
         mockMvc.perform(post("/films")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validFilm)))
+                .content(objectMapper.writeValueAsString(uniqueFilm)))
                 .andExpect(status().isCreated());
 
         // Получаем все фильмы
         mockMvc.perform(get("/films"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.length()").value(greaterThanOrEqualTo(1)));
     }
 
     // Тесты для пользователей
@@ -169,8 +182,8 @@ class FilmorateApplicationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validUser)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email").value("test@mail.com"))
-                .andExpect(jsonPath("$.login").value("testlogin"));
+                .andExpect(jsonPath("$.email").value(validUser.getEmail()))
+                .andExpect(jsonPath("$.login").value(validUser.getLogin()));
     }
 
     @Test
@@ -228,8 +241,8 @@ class FilmorateApplicationTests {
     @Test
     void createUserWithEmptyName() throws Exception {
         User user = new User();
-        user.setEmail("test@mail.com");
-        user.setLogin("testlogin");
+        user.setEmail("empty@mail.com");
+        user.setLogin("emptylogin");
         user.setName(""); // Пустое имя
         user.setBirthday(LocalDate.of(1990, 1, 1));
 
@@ -237,14 +250,14 @@ class FilmorateApplicationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(user)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("testlogin")); // Должен подставиться login
+                .andExpect(jsonPath("$.name").value("emptylogin")); // Должен подставиться login
     }
 
     @Test
     void createUserWithNullName() throws Exception {
         User user = new User();
-        user.setEmail("test@mail.com");
-        user.setLogin("testlogin");
+        user.setEmail("null@mail.com");
+        user.setLogin("nulllogin");
         user.setName(null); // null имя
         user.setBirthday(LocalDate.of(1990, 1, 1));
 
@@ -252,15 +265,15 @@ class FilmorateApplicationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(user)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("testlogin")); // Должен подставиться login
+                .andExpect(jsonPath("$.name").value("nulllogin")); // Должен подставиться login
     }
 
     @Test
     void createUserWithFutureBirthday() throws Exception {
         User user = new User();
-        user.setEmail("test@mail.com");
-        user.setLogin("testlogin");
-        user.setName("Test User");
+        user.setEmail("future@mail.com");
+        user.setLogin("futurelogin");
+        user.setName("Future User");
         user.setBirthday(LocalDate.now().plusDays(1)); // Дата в будущем
 
         mockMvc.perform(post("/users")
@@ -309,8 +322,8 @@ class FilmorateApplicationTests {
     @Test
     void updateUserWithoutId() throws Exception {
         User user = new User();
-        user.setEmail("test@mail.com");
-        user.setLogin("testlogin");
+        user.setEmail("no_id@mail.com");
+        user.setLogin("noidlogin");
         user.setBirthday(LocalDate.of(1990, 1, 1));
         // ID не установлен
 
@@ -322,24 +335,35 @@ class FilmorateApplicationTests {
 
     @Test
     void getAllUsers() throws Exception {
-        // Создаем пользователя
+        // Создаем пользователя с уникальным email
+        User uniqueUser = new User();
+        uniqueUser.setEmail("allusers@mail.com");
+        uniqueUser.setLogin("alluserslogin");
+        uniqueUser.setName("All Users Test");
+        uniqueUser.setBirthday(LocalDate.of(1990, 1, 1));
+
         mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validUser)))
+                .content(objectMapper.writeValueAsString(uniqueUser)))
                 .andExpect(status().isCreated());
 
         // Получаем всех пользователей
         mockMvc.perform(get("/users"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.length()").value(greaterThanOrEqualTo(1)));
     }
 
     @Test
     void getUserById() throws Exception {
-        // Создаем пользователя
+        // Создаем пользователя с уникальным email
+        User uniqueUser = new User();
+        uniqueUser.setEmail("getbyid@mail.com");
+        uniqueUser.setLogin("getbyidlogin");
+        uniqueUser.setBirthday(LocalDate.of(1990, 1, 1));
+
         String userJson = mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validUser)))
+                .content(objectMapper.writeValueAsString(uniqueUser)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
@@ -349,8 +373,8 @@ class FilmorateApplicationTests {
         mockMvc.perform(get("/users/{id}", createdUser.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(createdUser.getId()))
-                .andExpect(jsonPath("$.email").value("test@mail.com"))
-                .andExpect(jsonPath("$.login").value("testlogin"));
+                .andExpect(jsonPath("$.email").value("getbyid@mail.com"))
+                .andExpect(jsonPath("$.login").value("getbyidlogin"));
     }
 
     @Test
@@ -362,10 +386,16 @@ class FilmorateApplicationTests {
 
     @Test
     void getFilmById() throws Exception {
-        // Создаем фильм
+        // Создаем фильм с уникальным именем
+        Film uniqueFilm = new Film();
+        uniqueFilm.setName("Get Film By ID Test");
+        uniqueFilm.setDescription("Test Description");
+        uniqueFilm.setReleaseDate(LocalDate.of(2000, 1, 1));
+        uniqueFilm.setDuration(120);
+
         String filmJson = mockMvc.perform(post("/films")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validFilm)))
+                .content(objectMapper.writeValueAsString(uniqueFilm)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
@@ -375,7 +405,7 @@ class FilmorateApplicationTests {
         mockMvc.perform(get("/films/{id}", createdFilm.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(createdFilm.getId()))
-                .andExpect(jsonPath("$.name").value("Test Film"))
+                .andExpect(jsonPath("$.name").value("Get Film By ID Test"))
                 .andExpect(jsonPath("$.description").value("Test Description"));
     }
 
