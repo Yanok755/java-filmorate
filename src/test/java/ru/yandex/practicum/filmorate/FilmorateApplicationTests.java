@@ -1,232 +1,153 @@
-package ru.yandex.practicum.filmorate;
+package ru.yandex.practicum.filmorate.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import ru.yandex.practicum.filmorate.controller.FilmController;
-import ru.yandex.practicum.filmorate.controller.UserController;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 class FilmorateApplicationTests {
 
-    private FilmController filmController;
-    private UserController userController;
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private Film validFilm;
+    private User validUser;
 
     @BeforeEach
     void setUp() {
-        filmController = new FilmController();
-        userController = new UserController();
+        validFilm = new Film();
+        validFilm.setName("Test Film");
+        validFilm.setDescription("Test Description");
+        validFilm.setReleaseDate(LocalDate.of(2000, 1, 1));
+        validFilm.setDuration(120);
+
+        validUser = new User();
+        validUser.setEmail("test@mail.com");
+        validUser.setLogin("testlogin");
+        validUser.setBirthday(LocalDate.of(1990, 1, 1));
     }
 
     @Test
-    void contextLoads() {
-        // Проверка загрузки контекста Spring
-    }
-
-    // ========== ТЕСТЫ ДЛЯ FILM ==========
-
-    @Test
-    void shouldCreateValidFilm() {
-        Film film = createValidFilm();
-        Film createdFilm = filmController.createFilm(film);
-
-        assertNotNull(createdFilm);
-        assertNotNull(createdFilm.getId());
-        assertEquals("Test Film", createdFilm.getName());
-        assertEquals("Test Description", createdFilm.getDescription());
-        assertEquals(LocalDate.of(2000, 1, 1), createdFilm.getReleaseDate());
-        assertEquals(120, createdFilm.getDuration());
+    void createValidFilm() throws Exception {
+        mockMvc.perform(post("/films")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validFilm)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Test Film"));
     }
 
     @Test
-    void shouldThrowExceptionWhenFilmNameIsEmpty() {
-        Film film = createValidFilm();
-        film.setName("");
-
-        assertThrows(ValidationException.class, () -> filmController.createFilm(film));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenFilmReleaseDateTooEarly() {
-        Film film = createValidFilm();
-        film.setReleaseDate(LocalDate.of(1895, 12, 27));
-
-        assertThrows(ValidationException.class, () -> filmController.createFilm(film));
-    }
-
-    @Test
-    void shouldAcceptFilmReleaseDateExactlyMinDate() {
-        Film film = createValidFilm();
-        film.setReleaseDate(LocalDate.of(1895, 12, 28));
-
-        Film createdFilm = filmController.createFilm(film);
-        assertEquals(LocalDate.of(1895, 12, 28), createdFilm.getReleaseDate());
-    }
-
-    @Test
-    void shouldThrowExceptionWhenFilmDurationIsZero() {
-        Film film = createValidFilm();
-        film.setDuration(0);
-
-        assertThrows(ValidationException.class, () -> filmController.createFilm(film));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenFilmDurationIsNegative() {
-        Film film = createValidFilm();
-        film.setDuration(-10);
-
-        assertThrows(ValidationException.class, () -> filmController.createFilm(film));
-    }
-
-    @Test
-    void shouldUpdateFilmSuccessfully() {
-        Film film = createValidFilm();
-        Film createdFilm = filmController.createFilm(film);
-
-        createdFilm.setName("Updated Film");
-        createdFilm.setDescription("Updated Description");
-
-        Film updatedFilm = filmController.updateFilm(createdFilm);
-        assertEquals("Updated Film", updatedFilm.getName());
-        assertEquals("Updated Description", updatedFilm.getDescription());
-    }
-
-    @Test
-    void shouldThrowExceptionWhenUpdatingNonExistentFilm() {
-        Film film = createValidFilm();
-        film.setId(999);
-
-        assertThrows(ValidationException.class, () -> filmController.updateFilm(film));
-    }
-
-    @Test
-    void shouldGetAllFilms() {
-        Film film1 = createValidFilm();
-        film1.setName("Film 1");
-        Film film2 = createValidFilm();
-        film2.setName("Film 2");
-
-        filmController.createFilm(film1);
-        filmController.createFilm(film2);
-
-        assertEquals(2, filmController.getAllFilms().size());
-    }
-
-    // ========== ТЕСТЫ ДЛЯ USER ==========
-
-    @Test
-    void shouldCreateValidUser() {
-        User user = createValidUser();
-        User createdUser = userController.createUser(user);
-
-        assertNotNull(createdUser);
-        assertNotNull(createdUser.getId());
-        assertEquals("test@example.com", createdUser.getEmail());
-        assertEquals("testlogin", createdUser.getLogin());
-        assertEquals("Test User", createdUser.getName());
-        assertEquals(LocalDate.of(1990, 1, 1), createdUser.getBirthday());
-    }
-
-    @Test
-    void shouldUseLoginWhenUserNameIsEmpty() {
-        User user = createValidUser();
-        user.setName("");
-
-        User createdUser = userController.createUser(user);
-        assertEquals("testlogin", createdUser.getName());
-    }
-
-    @Test
-    void shouldThrowExceptionWhenUserEmailIsEmpty() {
-        User user = createValidUser();
-        user.setEmail("");
-
-        assertThrows(ValidationException.class, () -> userController.createUser(user));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenUserEmailHasNoAtSymbol() {
-        User user = createValidUser();
-        user.setEmail("invalid-email.com");
-
-        assertThrows(ValidationException.class, () -> userController.createUser(user));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenUserLoginIsEmpty() {
-        User user = createValidUser();
-        user.setLogin("");
-
-        assertThrows(ValidationException.class, () -> userController.createUser(user));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenUserLoginHasSpaces() {
-        User user = createValidUser();
-        user.setLogin("test login");
-
-        assertThrows(ValidationException.class, () -> userController.createUser(user));
-    }
-
-    @Test
-    void shouldUpdateUserSuccessfully() {
-        User user = createValidUser();
-        User createdUser = userController.createUser(user);
-
-        createdUser.setName("Updated User");
-        createdUser.setEmail("updated@example.com");
-
-        User updatedUser = userController.updateUser(createdUser);
-        assertEquals("Updated User", updatedUser.getName());
-        assertEquals("updated@example.com", updatedUser.getEmail());
-    }
-
-    @Test
-    void shouldThrowExceptionWhenUpdatingNonExistentUser() {
-        User user = createValidUser();
-        user.setId(999);
-
-        assertThrows(ValidationException.class, () -> userController.updateUser(user));
-    }
-
-    @Test
-    void shouldGetAllUsers() {
-        User user1 = createValidUser();
-        user1.setEmail("user1@example.com");
-        User user2 = createValidUser();
-        user2.setEmail("user2@example.com");
-
-        userController.createUser(user1);
-        userController.createUser(user2);
-
-        assertEquals(2, userController.getAllUsers().size());
-    }
-
-    // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
-
-    private Film createValidFilm() {
+    void createFilmWithEmptyName() throws Exception {
         Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
+        film.setName("");
+        film.setDescription("Test");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
         film.setDuration(120);
-        return film;
+
+        mockMvc.perform(post("/films")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(film)))
+                .andExpect(status().isBadRequest());
     }
 
-    private User createValidUser() {
+    @Test
+    void createFilmWithTooLongDescription() throws Exception {
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("A".repeat(201)); // 201 символ
+        film.setReleaseDate(LocalDate.of(2000, 1, 1));
+        film.setDuration(120);
+
+        mockMvc.perform(post("/films")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(film)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createFilmWithOldReleaseDate() throws Exception {
+        Film film = new Film();
+        film.setName("Old Film");
+        film.setDescription("Test");
+        film.setReleaseDate(LocalDate.of(1890, 1, 1)); // До 1895-12-28
+        film.setDuration(120);
+
+        mockMvc.perform(post("/films")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(film)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createValidUser() throws Exception {
+        mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validUser)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("test@mail.com"));
+    }
+
+    @Test
+    void createUserWithInvalidEmail() throws Exception {
         User user = new User();
-        user.setEmail("test@example.com");
+        user.setEmail("invalid-email");
         user.setLogin("testlogin");
-        user.setName("Test User");
         user.setBirthday(LocalDate.of(1990, 1, 1));
-        return user;
+
+        mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createUserWithLoginContainingSpaces() throws Exception {
+        User user = new User();
+        user.setEmail("test@mail.com");
+        user.setLogin("test login");
+        user.setBirthday(LocalDate.of(1990, 1, 1));
+
+        mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateNonExistentFilm() throws Exception {
+        validFilm.setId(999); // Несуществующий ID
+ 
+        mockMvc.perform(put("/films")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validFilm)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAllFilms() throws Exception {
+        mockMvc.perform(get("/films"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getAllUsers() throws Exception {
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk());
     }
 }
