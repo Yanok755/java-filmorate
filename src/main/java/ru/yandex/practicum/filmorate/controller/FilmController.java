@@ -57,6 +57,17 @@ public class FilmController {
         return new ArrayList<>(films.values());
     }
 
+    @GetMapping("/{filmId}")
+    public Film getFilmById(@PathVariable("filmId") Integer id) {
+        if (!films.containsKey(id)) {
+            log.error("Фильм с id {} не найден", id);
+            throw new NotFoundException("Фильм с указанным id не найден");
+        }
+
+        log.info("Получен фильм с id {}", id);
+        return films.get(id);
+    }
+
     private void validateFilm(Film film) {
         if (film.getName() == null || film.getName().isBlank()) {
             log.error("Название фильма не может быть пустым");
