@@ -55,15 +55,16 @@ public class UserController {
         return new ArrayList<>(users.values());
     }
 
-    @GetMapping("/{userId}")
-    public User getUserById(@PathVariable("userId") Integer id) {
-        if (!users.containsKey(id)) {
+    @GetMapping("/{id}")
+    public User getUserById(@PathVariable Integer id) {
+        User user = users.get(id);
+        if (user == null) {
             log.error("Пользователь с id {} не найден", id);
             throw new NotFoundException("Пользователь с указанным id не найден");
         }
 
         log.info("Получен пользователь с id {}", id);
-        return users.get(id);
+        return user;
     }
 
     private void validateUser(User user) {
