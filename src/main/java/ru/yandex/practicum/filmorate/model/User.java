@@ -1,23 +1,63 @@
-package ru.yandex.practicum.filmorate.model;
+package ru.yandex.practicum.filmorate.controller;
 
-import jakarta.validation.constraints.*;
-import lombok.Data;
-import java.time.LocalDate;
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.User;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-@Data
-public class User {
-    private Integer id;
+@RestController
+@RequestMapping("/users")
+@Slf4j
+public class UserController {
+    private final Map<Integer, User> users = new HashMap<>();
+    private int nextId = 1;
 
-    @NotBlank(message = "Электронная почта не может быть пустой")
-    @Email(message = "Электронная почта должна быть корректной")
-    private String email;
+    @PostMapping
+    public User createUser(@Valid @RequestBody User user) {
+        validateUser(user);
 
-    @NotBlank(message = "Логин не может быть пустым")
-    @Pattern(regexp = "^\\S+$", message = "Логин не может содержать пробелы")
-    private String login;
+        // Если имя не указано, используем логин
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+        }
 
-    private String name;
+        user.setId(nextId++);
+        users.put(user.getId(), user);
+        log.info("Создан пользователь: {}", user);
+        return user;
+    }
 
-    @PastOrPresent(message = "Дата рождения не может быть в будущем")
-    private LocalDate birthday;
+    @PutMapping
+    public User updateUser(@Valid @RequestBody User user) {
+        if (user.getId() == null || !users.containsKey(user.getId())) {
+            log.error("Попытка обновления несуществующего пользователя с id: {}", user.getId());
+            throw new ValidationException("Пользователь с таким id не существует");
+        }
+        validateUser(user);
+
+        // Если имя не указано, используем логин
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+        }
+
+        users.put(user.getId(), user);
+        log.info("Обновлен пользователь: {}", user);
+        return user;
+    }
+
+    @GetMapping
+    public List<User> getAllUsers() {
+        log.info("Получен запрос на получение всех пользователей. Количество: {}", users.size());
+        return new ArrayList<>(users.values());
+    }
+
+    private void validateUser(User user) {
+        // Дополнительная валидация помимо аннотаций
+        // (в данном случае аннотации покрывают все, оставляем пустым или для дополнительных проверок)
+    }
 }
