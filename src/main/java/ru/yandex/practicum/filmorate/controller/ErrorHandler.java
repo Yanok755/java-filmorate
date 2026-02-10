@@ -19,7 +19,7 @@ public class ErrorHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> handleValidationException(final ValidationException e) {
         log.error("Ошибка валидации: {}", e.getMessage());
-        return Map.of("error", "Ошибка валидации", 
+        return Map.of("error", "Ошибка валидации",
                      "errorMessage", e.getMessage());
     }
 
