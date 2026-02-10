@@ -57,15 +57,16 @@ public class FilmController {
         return new ArrayList<>(films.values());
     }
 
-    @GetMapping("/{filmId}")
-    public Film getFilmById(@PathVariable("filmId") Integer id) {
-        if (!films.containsKey(id)) {
+    @GetMapping("/{id}")
+    public Film getFilmById(@PathVariable Integer id) {
+        Film film = films.get(id);
+        if (film == null) {
             log.error("Фильм с id {} не найден", id);
             throw new NotFoundException("Фильм с указанным id не найден");
         }
 
         log.info("Получен фильм с id {}", id);
-        return films.get(id);
+        return film;
     }
 
     private void validateFilm(Film film) {
