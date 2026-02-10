@@ -344,7 +344,7 @@ class FilmorateApplicationTests {
                 .andReturn().getResponse().getContentAsString();
 
         User createdUser = objectMapper.readValue(userJson, User.class);
- 
+
         // Получаем пользователя по ID
         mockMvc.perform(get("/users/{id}", createdUser.getId()))
                 .andExpect(status().isOk())
