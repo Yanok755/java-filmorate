@@ -1,10 +1,10 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import javax.validation.Valid;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +21,12 @@ public class UserController {
     @PostMapping
     public User createUser(@Valid @RequestBody User user) {
         validateUser(user);
+
+        // Если имя не указано, используем логин
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+        }
+
         user.setId(nextId++);
         users.put(user.getId(), user);
         log.info("Создан пользователь: {}", user);
@@ -34,6 +40,12 @@ public class UserController {
             throw new ValidationException("Пользователь с таким id не существует");
         }
         validateUser(user);
+
+        // Если имя не указано, используем логин
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+        }
+
         users.put(user.getId(), user);
         log.info("Обновлен пользователь: {}", user);
         return user;
@@ -46,14 +58,7 @@ public class UserController {
     }
 
     private void validateUser(User user) {
-        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
-            throw new ValidationException("Электронная почта не может быть пустой и должна содержать символ @");
-        }
-        if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
-            throw new ValidationException("Логин не может быть пустым и содержать пробелы");
-        }
-        if (user.getBirthday() != null && user.getBirthday().isAfter(LocalDate.now())) {
-            throw new ValidationException("Дата рождения не может быть в будущем");
-        }
+        // Дополнительная валидация помимо аннотаций
+        // (в данном случае аннотации покрывают все, оставляем пустым или для дополнительных проверок)
     }
 }
