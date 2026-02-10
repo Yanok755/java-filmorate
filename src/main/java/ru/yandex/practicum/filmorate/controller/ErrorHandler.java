@@ -25,8 +25,16 @@ public class ErrorHandler {
         return new ErrorResponse("Произошла непредвиденная ошибка");
     }
 
-    @Data
+    // Заменяем @Data на обычный класс
     private static class ErrorResponse {
         private final String error;
+
+        public ErrorResponse(String error) {
+            this.error = error;
+        }
+
+        public String getError() {
+            return error;
+        }
     }
 }
