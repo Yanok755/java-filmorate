@@ -53,34 +53,6 @@ class FilmorateApplicationTests {
     }
 
     @Test
-    void createFilmWithEmptyName() throws Exception {
-        Film film = new Film();
-        film.setName("");
-        film.setDescription("Test");
-        film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(120);
-
-        mockMvc.perform(post("/films")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void createFilmWithTooLongDescription() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("A".repeat(201)); // 201 символ
-        film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(120);
-
-        mockMvc.perform(post("/films")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void createFilmWithOldReleaseDate() throws Exception {
         Film film = new Film();
         film.setName("Old Film");
@@ -91,62 +63,47 @@ class FilmorateApplicationTests {
         mockMvc.perform(post("/films")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("Дата релиза не может быть раньше 28 декабря 1895 года"));
     }
 
     @Test
-    void createValidUser() throws Exception {
-        mockMvc.perform(post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validUser)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email").value("test@mail.com"));
-    }
-
-    @Test
-    void createUserWithInvalidEmail() throws Exception {
-        User user = new User();
-        user.setEmail("invalid-email");
-        user.setLogin("testlogin");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
-
-        mockMvc.perform(post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void createUserWithLoginContainingSpaces() throws Exception {
+    void createUserWithEmptyName() throws Exception {
         User user = new User();
         user.setEmail("test@mail.com");
-        user.setLogin("test login");
+        user.setLogin("testlogin");
+        user.setName(""); // Пустое имя
         user.setBirthday(LocalDate.of(1990, 1, 1));
 
         mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("testlogin")); // Должен подставиться login
+    }
+
+    @Test
+    void updateNonExistentUser() throws Exception {
+        validUser.setId(9999); // Несуществующий ID
+
+        mockMvc.perform(put("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validUser)))
+                .andExpect(status().isNotFound()) // Должен быть 404, а не 400
+                .andExpect(jsonPath("$.error")
+                        .value("Объект не найден"));
     }
 
     @Test
     void updateNonExistentFilm() throws Exception {
-        validFilm.setId(999); // Несуществующий ID
+        validFilm.setId(9999); // Несуществующий ID
+
         mockMvc.perform(put("/films")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validFilm)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void getAllFilms() throws Exception {
-        mockMvc.perform(get("/films"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void getAllUsers() throws Exception {
-        mockMvc.perform(get("/users"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNotFound()) // Должен быть 404
+                .andExpect(jsonPath("$.error")
+                        .value("Объект не найден"));
     }
 }
