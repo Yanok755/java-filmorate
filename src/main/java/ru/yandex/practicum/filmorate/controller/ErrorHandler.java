@@ -2,39 +2,55 @@ package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
+import javax.validation.ConstraintViolationException;
+import java.util.Map;
+
 @RestControllerAdvice
 @Slf4j
 public class ErrorHandler {
 
-    @ExceptionHandler
+    @ExceptionHandler(ValidationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleValidationException(final ValidationException e) {
+    public Map<String, String> handleValidationException(final ValidationException e) {
         log.error("Ошибка валидации: {}", e.getMessage());
-        return new ErrorResponse(e.getMessage());
+        return Map.of("error", "Ошибка валидации", 
+                     "errorMessage", e.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleMethodArgumentNotValidException(
+            final MethodArgumentNotValidException e) {
+        String errorMessage = e.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .findFirst()
+                .orElse("Неизвестная ошибка валидации");
+
+        log.error("Ошибка валидации данных: {}", errorMessage);
+        return Map.of("error", "Ошибка валидации данных",
+                     "errorMessage", errorMessage);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleConstraintViolationException(
+            final ConstraintViolationException e) {
+        log.error("Ошибка ограничений: {}", e.getMessage());
+        return Map.of("error", "Ошибка ограничений",
+                     "errorMessage", e.getMessage());
     }
 
     @ExceptionHandler
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ErrorResponse handleOtherExceptions(final Exception e) {
-        log.error("Произошла ошибка: {}", e.getMessage(), e);
-        return new ErrorResponse("Произошла непредвиденная ошибка");
-    }
-
-    // Заменяем @Data на обычный класс
-    private static class ErrorResponse {
-        private final String error;
-
-        public ErrorResponse(String error) {
-            this.error = error;
-        }
-
-        public String getError() {
-            return error;
-        }
+    public Map<String, String> handleThrowable(final Throwable e) {
+        log.error("Произошла непредвиденная ошибка: {}", e.getMessage(), e);
+        return Map.of("error", "Произошла непредвиденная ошибка",
+                     "errorMessage", e.getMessage());
     }
 }
