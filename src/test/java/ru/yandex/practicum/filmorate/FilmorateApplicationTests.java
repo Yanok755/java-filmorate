@@ -132,7 +132,6 @@ class FilmorateApplicationTests {
     @Test
     void updateNonExistentFilm() throws Exception {
         validFilm.setId(999); // Несуществующий ID
- 
         mockMvc.perform(put("/films")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validFilm)))
