@@ -55,6 +55,17 @@ public class UserController {
         return new ArrayList<>(users.values());
     }
 
+    @GetMapping("/{userId}")
+    public User getUserById(@PathVariable("userId") Integer id) {
+        if (!users.containsKey(id)) {
+            log.error("Пользователь с id {} не найден", id);
+            throw new NotFoundException("Пользователь с указанным id не найден");
+        }
+
+        log.info("Получен пользователь с id {}", id);
+        return users.get(id);
+    }
+
     private void validateUser(User user) {
         if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
             log.error("Электронная почта не может быть пустой и должна содержать символ @");
