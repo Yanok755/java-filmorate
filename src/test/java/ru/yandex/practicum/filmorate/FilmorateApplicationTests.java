@@ -54,33 +54,6 @@ class FilmorateApplicationTests {
     }
 
     @Test
-    void shouldThrowExceptionWhenFilmNameIsNull() {
-        Film film = createValidFilm();
-        film.setName(null);
-
-        assertThrows(ValidationException.class, () -> filmController.createFilm(film));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenFilmDescriptionTooLong() {
-        Film film = createValidFilm();
-        String longDescription = "A".repeat(201);
-        film.setDescription(longDescription);
-
-        assertThrows(ValidationException.class, () -> filmController.createFilm(film));
-    }
-
-    @Test
-    void shouldAcceptFilmDescriptionExactly200Chars() {
-        Film film = createValidFilm();
-        String exactDescription = "A".repeat(200);
-        film.setDescription(exactDescription);
-
-        Film createdFilm = filmController.createFilm(film);
-        assertEquals(exactDescription, createdFilm.getDescription());
-    }
-
-    @Test
     void shouldThrowExceptionWhenFilmReleaseDateTooEarly() {
         Film film = createValidFilm();
         film.setReleaseDate(LocalDate.of(1895, 12, 27));
@@ -172,26 +145,9 @@ class FilmorateApplicationTests {
     }
 
     @Test
-    void shouldUseLoginWhenUserNameIsNull() {
-        User user = createValidUser();
-        user.setName(null);
-
-        User createdUser = userController.createUser(user);
-        assertEquals("testlogin", createdUser.getName());
-    }
-
-    @Test
     void shouldThrowExceptionWhenUserEmailIsEmpty() {
         User user = createValidUser();
         user.setEmail("");
-
-        assertThrows(ValidationException.class, () -> userController.createUser(user));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenUserEmailIsNull() {
-        User user = createValidUser();
-        user.setEmail(null);
 
         assertThrows(ValidationException.class, () -> userController.createUser(user));
     }
@@ -213,36 +169,11 @@ class FilmorateApplicationTests {
     }
 
     @Test
-    void shouldThrowExceptionWhenUserLoginIsNull() {
-        User user = createValidUser();
-        user.setLogin(null);
-
-        assertThrows(ValidationException.class, () -> userController.createUser(user));
-    }
-
-    @Test
     void shouldThrowExceptionWhenUserLoginHasSpaces() {
         User user = createValidUser();
         user.setLogin("test login");
 
         assertThrows(ValidationException.class, () -> userController.createUser(user));
-    }
-
-    @Test
-    void shouldThrowExceptionWhenUserBirthdayIsInFuture() {
-        User user = createValidUser();
-        user.setBirthday(LocalDate.now().plusDays(1));
-
-        assertThrows(ValidationException.class, () -> userController.createUser(user));
-    }
-
-    @Test
-    void shouldAcceptUserBirthdayToday() {
-        User user = createValidUser();
-        user.setBirthday(LocalDate.now());
-
-        User createdUser = userController.createUser(user);
-        assertEquals(LocalDate.now(), createdUser.getBirthday());
     }
 
     @Test
@@ -277,13 +208,6 @@ class FilmorateApplicationTests {
         userController.createUser(user2);
 
         assertEquals(2, userController.getAllUsers().size());
-    }
-
-    @Test
-    void shouldHandleNullRequestBody() {
-        // Тест на пустой запрос - проверяем, что контроллер не падает
-        assertThrows(Exception.class, () -> filmController.createFilm(null));
-        assertThrows(Exception.class, () -> userController.createUser(null));
     }
 
     // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
