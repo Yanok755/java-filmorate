@@ -6,6 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
 import javax.validation.ConstraintViolationException;
@@ -14,6 +15,14 @@ import java.util.Map;
 @RestControllerAdvice
 @Slf4j
 public class ErrorHandler {
+
+    @ExceptionHandler(NotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, String> handleNotFoundException(final NotFoundException e) {
+        log.error("Объект не найден: {}", e.getMessage());
+        return Map.of("error", "Объект не найден",
+                     "errorMessage", e.getMessage());
+    }
 
     @ExceptionHandler(ValidationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
