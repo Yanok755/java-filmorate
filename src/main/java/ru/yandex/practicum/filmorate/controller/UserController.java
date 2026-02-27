@@ -19,11 +19,30 @@ import java.util.Map;
 @RequestMapping("/users")
 public class UserController {
     private static final Map<Long, User> users = new HashMap<>();
+    private static long nextId = 1;
 
     @GetMapping
     public ResponseEntity<List<User>> getUsers() {
         log.info("Вызван эндпоинт на получение всех пользователей");
         return ResponseEntity.ok(new ArrayList<>(users.values()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        log.info("Вызван эндпоинт на получение пользователя по id = {}", id);
+        
+        User user = users.get(id);
+        if (user == null) {
+            log.info("Не найдено пользователей с указанным id - {}", id);
+            NotFoundResponse error = new NotFoundResponse(
+                HttpStatusCode.valueOf(404), 
+                "Не найдено пользователей с указанным id", 
+                System.currentTimeMillis()
+            );
+            return ResponseEntity.status(404).body(error);
+        }
+        
+        return ResponseEntity.ok(user);
     }
 
     @PostMapping
@@ -60,8 +79,12 @@ public class UserController {
         User oldUser = users.get(user.getId());
 
         if (oldUser == null) {
-            log.info("Не найдено фильмов с указанным id - {}", user.getId());
-            NotFoundResponse error = new NotFoundResponse(HttpStatusCode.valueOf(404), "Не найдено пользователей с указанным id", System.currentTimeMillis());
+            log.info("Не найдено пользователей с указанным id - {}", user.getId());
+            NotFoundResponse error = new NotFoundResponse(
+                HttpStatusCode.valueOf(404), 
+                "Не найдено пользователей с указанным id", 
+                System.currentTimeMillis()
+            );
             return ResponseEntity.status(404).body(error);
         }
 
@@ -90,6 +113,101 @@ public class UserController {
         return ResponseEntity.ok(oldUser);
     }
 
+    @PutMapping("/{id}/friends/{friendId}")
+    public ResponseEntity<?> addFriend(@PathVariable Long id, @PathVariable Long friendId) {
+        log.info("Вызван эндпоинт на добавление друга. User id = {}, Friend id = {}", id, friendId);
+        
+        // Проверяем существование пользователей
+        User user = users.get(id);
+        User friend = users.get(friendId);
+        
+        if (user == null || friend == null) {
+            log.info("Не найдено пользователей с указанными id");
+            NotFoundResponse error = new NotFoundResponse(
+                HttpStatusCode.valueOf(404), 
+                "Не найдено пользователей с указанными id", 
+                System.currentTimeMillis()
+            );
+            return ResponseEntity.status(404).body(error);
+        }
+        
+        // TODO: Добавить логику для друзей (если есть отдельное хранилище для друзей)
+        
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}/friends/{friendId}")
+    public ResponseEntity<?> removeFriend(@PathVariable Long id, @PathVariable Long friendId) {
+        log.info("Вызван эндпоинт на удаление друга. User id = {}, Friend id = {}", id, friendId);
+        
+        // Проверяем существование пользователей
+        User user = users.get(id);
+        User friend = users.get(friendId);
+        
+        if (user == null || friend == null) {
+            log.info("Не найдено пользователей с указанными id");
+            NotFoundResponse error = new NotFoundResponse(
+                HttpStatusCode.valueOf(404), 
+                "Не найдено пользователей с указанными id", 
+                System.currentTimeMillis()
+            );
+            return ResponseEntity.status(404).body(error);
+        }
+        
+        // TODO: Добавить логику для удаления друзей
+        
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/friends")
+    public ResponseEntity<?> getFriends(@PathVariable Long id) {
+        log.info("Вызван эндпоинт на получение списка друзей пользователя id = {}", id);
+        
+        User user = users.get(id);
+        if (user == null) {
+            log.info("Не найдено пользователей с указанным id - {}", id);
+            NotFoundResponse error = new NotFoundResponse(
+                HttpStatusCode.valueOf(404), 
+                "Не найдено пользователей с указанным id", 
+                System.currentTimeMillis()
+            );
+            return ResponseEntity.status(404).body(error);
+        }
+        
+        // TODO: Вернуть список друзей
+        return ResponseEntity.ok(new ArrayList<>());
+    }
+
+    @GetMapping("/{id}/friends/common/{otherId}")
+    public ResponseEntity<?> getCommonFriends(@PathVariable Long id, @PathVariable Long otherId) {
+        log.info("Вызван эндпоинт на получение общих друзей. User id = {}, Other id = {}", id, otherId);
+        
+        User user = users.get(id);
+        User otherUser = users.get(otherId);
+        
+        if (user == null || otherUser == null) {
+            log.info("Не найдено пользователей с указанными id");
+            NotFoundResponse error = new NotFoundResponse(
+                HttpStatusCode.valueOf(404), 
+                "Не найдено пользователей с указанными id", 
+                System.currentTimeMillis()
+            );
+            return ResponseEntity.status(404).body(error);
+        }
+        
+        // TODO: Вернуть список общих друзей
+        return ResponseEntity.ok(new ArrayList<>());
+    }
+
+    // Метод для тестов - очистка хранилища
+    @PostMapping("/test/reset")
+    public ResponseEntity<Void> reset() {
+        log.info("Вызван эндпоинт для сброса хранилища (только для тестов)");
+        users.clear();
+        nextId = 1;
+        return ResponseEntity.ok().build();
+    }
+
     private void validateRequestBody(User user) {
         if (user.getId() == null) {
             log.warn("Отсутствует id");
@@ -99,13 +217,6 @@ public class UserController {
 
     private Long generateNextId() {
         log.trace("Генерация нового id");
-        long currentId = users
-                .keySet()
-                .stream()
-                .mapToLong(id -> id)
-                .max()
-                .orElse(0L);
-
-        return currentId + 1;
+        return nextId++;
     }
 }
