@@ -2,11 +2,11 @@ package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.Exceptions.ValidationException;
-import ru.yandex.practicum.filmorate.NotFoundResponse;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.ErrorResponse;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
@@ -63,8 +63,9 @@ public class FilmController {
 
         if (oldFilm == null) {
             log.warn("Не найдено фильмов с указанным id - {}", film.getId());
-            NotFoundResponse error = new NotFoundResponse(HttpStatusCode.valueOf(404), "Не найдено фильмов с указанным id", System.currentTimeMillis());
-            return ResponseEntity.status(404).body(error);
+            // Используем ErrorResponse вместо NotFoundResponse
+            ErrorResponse error = ErrorResponse.notFound("Не найдено фильмов с указанным id");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
         }
 
         if (film.getDescription() != null) {
@@ -78,6 +79,10 @@ public class FilmController {
         }
 
         if (film.getReleaseDate() != null) {
+            if (film.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
+                log.warn("Проблема с полем 'Дата релиза' при обновлении");
+                throw new ValidationException("Дата релиза не может быть раньше " + CINEMA_BIRTHDAY);
+            }
             oldFilm.setReleaseDate(film.getReleaseDate());
             log.debug("Обновили дату релиза фильма - {}", oldFilm.getReleaseDate());
         }
@@ -97,11 +102,6 @@ public class FilmController {
             log.error("Отсутствует id");
             throw new ValidationException("Укажите id для обновления фильма");
         }
-
-        if (film.getReleaseDate() != null && film.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
-            log.warn("Проблема с полем 'Дата релиза'");
-            throw new ValidationException("Дата релиза не может быть раньше " + CINEMA_BIRTHDAY);
-        }
     }
 
     private Long generateNextId() {
@@ -114,5 +114,19 @@ public class FilmController {
                 .orElse(0L);
 
         return currentId + 1;
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(ValidationException e) {
+        log.error("Validation error: {}", e.getMessage());
+        ErrorResponse error = ErrorResponse.badRequest(e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneral(Exception e) {
+        log.error("Unexpected error: {}", e.getMessage());
+        ErrorResponse error = ErrorResponse.internalError("Internal server error");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }
