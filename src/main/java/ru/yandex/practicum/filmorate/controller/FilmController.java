@@ -33,7 +33,7 @@ public class FilmController {
         log.info("Вызван эндпоинт на создание нового фильма");
 
         if (film == null) {
-            log.warn("Пустой запрос");
+            log.error("Пустой запрос");
             throw new ValidationException("Запрос некорректен");
         }
 
@@ -57,12 +57,12 @@ public class FilmController {
         log.info("Вызван эндпоинт на обновление данных фильма");
 
         validateRequestBody(film);
-        log.trace("Валидация запроса прошла успешно");
+        log.debug("Валидация запроса прошла успешно");
 
         Film oldFilm = films.get(film.getId());
 
         if (oldFilm == null) {
-            log.info("Не найдено фильмов с указанным id - {}", film.getId());
+            log.warn("Не найдено фильмов с указанным id - {}", film.getId());
             NotFoundResponse error = new NotFoundResponse(HttpStatusCode.valueOf(404), "Не найдено фильмов с указанным id", System.currentTimeMillis());
             return ResponseEntity.status(404).body(error);
         }
@@ -94,7 +94,7 @@ public class FilmController {
 
     private void validateRequestBody(Film film) {
         if (film.getId() == null) {
-            log.warn("Отсутствует id");
+            log.error("Отсутствует id");
             throw new ValidationException("Укажите id для обновления фильма");
         }
 
