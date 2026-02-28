@@ -60,7 +60,7 @@ public class UserController {
         User oldUser = users.get(user.getId());
 
         if (oldUser == null) {
-            log.info("Не найдено фильмов с указанным id - {}", user.getId());
+            log.warn("Не найдено фильмов с указанным id - {}", user.getId());
             NotFoundResponse error = new NotFoundResponse(HttpStatusCode.valueOf(404), "Не найдено пользователей с указанным id", System.currentTimeMillis());
             return ResponseEntity.status(404).body(error);
         }
