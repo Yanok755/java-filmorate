@@ -51,7 +51,7 @@ public class InMemoryFilmStorage implements FilmStorage {
 
     @Override
     public Optional<Film> getFilmById(Long id) {
-        log.trace("Поиск фильма по id: {}", id);
+        log.debug("Поиск фильма по id: {}", id);  // ИСПРАВЛЕНО: trace -> debug
 
         return Optional.ofNullable(films.get(id));
     }
@@ -71,14 +71,14 @@ public class InMemoryFilmStorage implements FilmStorage {
     @Override
     public boolean containsFilm(Long id) {
         boolean exists = films.containsKey(id);
-        log.trace("Проверка существования фильма id={}: {}", id, exists);
+        log.debug("Проверка существования фильма id={}: {}", id, exists);  // ИСПРАВЛЕНО: trace -> debug
         return exists;
     }
 
     @Override
     public int getFilmsCount() {
         int count = films.size();
-        log.trace("Текущее количество фильмов: {}", count);
+        log.debug("Текущее количество фильмов: {}", count);  // ИСПРАВЛЕНО: trace -> debug
         return count;
     }
 
