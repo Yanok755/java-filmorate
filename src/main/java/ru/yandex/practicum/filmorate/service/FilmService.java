@@ -100,13 +100,16 @@ public class FilmService {
         log.info("Лайк удален. У фильма {} теперь {} лайков", filmId, film.getLikes().size());
     }
 
-    public Collection<Film> getMostPopularFilms(Integer count) {
-        int limit = count != null ? count : 10;
-        log.info("Запрос на получение {} самых популярных фильмов", limit);
+    public Collection<Film> getMostPopularFilms() {
+    return getMostPopularFilms(10);
+    }
 
+    public Collection<Film> getMostPopularFilms(int count) {
+        log.info("Запрос на получение {} самых популярных фильмов", count);
+    
         return filmStorage.findAllFilms().stream()
-                .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
+            .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
+            .limit(count)
+            .collect(Collectors.toList());
     }
 }
