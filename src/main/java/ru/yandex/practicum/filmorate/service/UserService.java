@@ -21,7 +21,6 @@ public class UserService {
 
     public User createUser(User user) {
         log.info("Запрос на создание пользователя: {}", user);
-
         return userStorage.createUser(user);
     }
 
@@ -39,7 +38,6 @@ public class UserService {
     public Collection<User> findAllUsers() {
         Collection<User> users = userStorage.findAllUsers();
         log.info("Запрос на получение всех пользователей. Всего пользователей: {}", users.size());
-
         return users;
     }
 
@@ -56,17 +54,9 @@ public class UserService {
     public void addFriend(Long userId, Long friendId) {
         log.info("Запрос на добавление в друзья: пользователь {} хочет добавить пользователя {}", userId, friendId);
 
-        User user = userStorage.getUserById(userId)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", userId);
-                    return new NotFoundException("Пользователь с id " + userId + " не найден");
-                });
-
-        User friend = userStorage.getUserById(friendId)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", friendId);
-                    return new NotFoundException("Пользователь с id " + friendId + " не найден");
-                });
+        // ИСПРАВЛЕНО: используем метод сервиса вместо прямого вызова storage
+        User user = getUserById(userId);
+        User friend = getUserById(friendId);
 
         if (userId.equals(friendId)) {
             log.error("Пользователь {} пытается добавить самого себя в друзья", userId);
@@ -82,17 +72,9 @@ public class UserService {
     public void removeFriend(Long userId, Long friendId) {
         log.info("Запрос на удаление из друзей: пользователь {} хочет удалить пользователя {}", userId, friendId);
 
-        User user = userStorage.getUserById(userId)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", userId);
-                    return new NotFoundException("Пользователь с id " + userId + " не найден");
-                });
-
-        User friend = userStorage.getUserById(friendId)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", friendId);
-                    return new NotFoundException("Пользователь с id " + friendId + " не найден");
-                });
+        // ИСПРАВЛЕНО: используем метод сервиса вместо прямого вызова storage
+        User user = getUserById(userId);
+        User friend = getUserById(friendId);
 
         user.getFriends().remove(friendId);
         friend.getFriends().remove(userId);
@@ -103,35 +85,20 @@ public class UserService {
     public Collection<User> getUserFriends(Long userId) {
         log.info("Запрос на получение друзей пользователя {}", userId);
 
-        User user = userStorage.getUserById(userId)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", userId);
-                    return new NotFoundException("Пользователь с id " + userId + " не найден");
-                });
+        // ИСПРАВЛЕНО: используем метод сервиса
+        User user = getUserById(userId);
 
         return user.getFriends().stream()
-                .map(friendId -> userStorage.getUserById(friendId)
-                        .orElseThrow(() -> {
-                            log.error("Друг с id {} не найден в хранилище", friendId);
-                            return new NotFoundException("Друг с id " + friendId + " не найден");
-                        }))
+                .map(this::getUserById)  // ИСПРАВЛЕНО: используем метод сервиса
                 .collect(Collectors.toList());
     }
 
     public Collection<User> getCommonFriends(Long userId, Long otherId) {
         log.info("Запрос на получение общих друзей пользователей {} и {}", userId, otherId);
 
-        User user = userStorage.getUserById(userId)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", userId);
-                    return new NotFoundException("Пользователь с id " + userId + " не найден");
-                });
-
-        User other = userStorage.getUserById(otherId)
-                .orElseThrow(() -> {
-                    log.error("Пользователь с id {} не найден", otherId);
-                    return new NotFoundException("Пользователь с id " + otherId + " не найден");
-                });
+        // ИСПРАВЛЕНО: используем метод сервиса
+        User user = getUserById(userId);
+        User other = getUserById(otherId);
 
         Set<Long> commonFriendIds = user.getFriends().stream()
                 .filter(other.getFriends()::contains)
@@ -140,11 +107,7 @@ public class UserService {
         log.info("Найдено {} общих друзей", commonFriendIds.size());
 
         return commonFriendIds.stream()
-                .map(friendId -> userStorage.getUserById(friendId)
-                        .orElseThrow(() -> {
-                            log.error("Общий друг с id {} не найден в хранилище", friendId);
-                            return new NotFoundException("Общий друг с id " + friendId + " не найден");
-                        }))
+                .map(this::getUserById)  // ИСПРАВЛЕНО: используем метод сервиса
                 .collect(Collectors.toList());
     }
 }
