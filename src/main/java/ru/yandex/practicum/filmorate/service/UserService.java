@@ -85,29 +85,27 @@ public class UserService {
     public Collection<User> getUserFriends(Long userId) {
         log.info("Запрос на получение друзей пользователя {}", userId);
 
-        // ИСПРАВЛЕНО: используем метод сервиса
         User user = getUserById(userId);
 
         return user.getFriends().stream()
-                .map(this::getUserById)  // ИСПРАВЛЕНО: используем метод сервиса
-                .collect(Collectors.toList());
+            .map(this::getUserById)  // просто получаем друга по id
+            .collect(Collectors.toList());
     }
 
     public Collection<User> getCommonFriends(Long userId, Long otherId) {
         log.info("Запрос на получение общих друзей пользователей {} и {}", userId, otherId);
 
-        // ИСПРАВЛЕНО: используем метод сервиса
         User user = getUserById(userId);
         User other = getUserById(otherId);
 
         Set<Long> commonFriendIds = user.getFriends().stream()
-                .filter(other.getFriends()::contains)
-                .collect(Collectors.toSet());
+            .filter(other.getFriends()::contains)
+            .collect(Collectors.toSet());
 
         log.info("Найдено {} общих друзей", commonFriendIds.size());
 
         return commonFriendIds.stream()
-                .map(this::getUserById)  // ИСПРАВЛЕНО: используем метод сервиса
-                .collect(Collectors.toList());
+            .map(this::getUserById)  // просто получаем друга по id
+            .collect(Collectors.toList());
     }
 }
