@@ -106,7 +106,7 @@ public class FilmService {
 
     public Collection<Film> getMostPopularFilms(int count) {
         log.info("Запрос на получение {} самых популярных фильмов", count);
-    
+
         return filmStorage.findAllFilms().stream()
             .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
             .limit(count)
