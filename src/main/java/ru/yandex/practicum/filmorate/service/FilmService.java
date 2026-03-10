@@ -30,7 +30,7 @@ public class FilmService {
         }
 
         if (film.getDescription() != null && film.getDescription().length() > 200) {
-            log.error("Ошибка валидации при {}: длина описания {} превышает 200 символов", 
+            log.error("Ошибка валидации при {}: длина описания {} превышает 200 символов",
                     operation, film.getDescription().length());
             throw new ValidationException("Максимальная длина описания — 200 символов");
         }
@@ -41,13 +41,13 @@ public class FilmService {
         }
 
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
-            log.error("Ошибка валидации при {}: дата релиза {} раньше минимальной {}", 
+            log.error("Ошибка валидации при {}: дата релиза {} раньше минимальной {}",
                     operation, film.getReleaseDate(), MIN_RELEASE_DATE);
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
 
         if (film.getDuration() == null || film.getDuration() <= 0) {
-            log.error("Ошибка валидации при {}: продолжительность фильма {} должна быть положительной", 
+            log.error("Ошибка валидации при {}: продолжительность фильма {} должна быть положительной",
                     operation, film.getDuration());
             throw new ValidationException("Продолжительность фильма должна быть положительным числом");
         }
