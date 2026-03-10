@@ -61,7 +61,7 @@ public class UserService {
     public User updateUser(User user) {
         log.info("Запрос на обновление пользователя: {}", user.getId());
 
-        if (user.getId() == null) { 
+        if (user.getId() == null) {
             log.error("ID пользователя не может быть null при обновлении");
             throw new ValidationException("ID пользователя должен быть указан");
     }
