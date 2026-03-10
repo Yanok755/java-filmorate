@@ -26,7 +26,7 @@ public class FilmService {
     private void validate(Film film, String operation) {
         if (film.getName() == null || film.getName().isBlank()) {
             log.error("Ошибка валидации при {}: название фильма не должно быть пустым", operation);
-            throw new ValidationException("Название фильма не должно быть пустым");
+            throw new ValidationException("Имя фильма не должно быть пустым");
         }
 
         if (film.getDescription() != null && film.getDescription().length() > 200) {
