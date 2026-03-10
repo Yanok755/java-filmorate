@@ -61,10 +61,10 @@ public class UserService {
     public User updateUser(User user) {
         log.info("Запрос на обновление пользователя: {}", user.getId());
 
-        if (user.getId() == null) {
-            log.error("ID пользователя не может быть null при обновлении");
+        if (user.getId() <= 0) {
+            log.error("ID пользователя должен быть положительным числом");
             throw new ValidationException("ID пользователя должен быть указан");
-    }
+        }
 
         if (!userStorage.containsUser(user.getId())) {
             log.error("Пользователь с id {} не найден", user.getId());
