@@ -1,6 +1,6 @@
 [README.md](https://github.com/user-attachments/files/25917444/README.md)
 ### Схема базы данных
-![Схема базы данных](src/main/resources/images/filmorate-schema.png)
+![Схема базы данных](src/main/java/ru/yandex/practicum/filmorate/resources/images/filmorate-schema.png)
 
 База данных состоит из 7 таблиц:
 - **users** — пользователи
