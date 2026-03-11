@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.storage.user;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 import java.util.Collection;
 import java.util.HashMap;
@@ -21,7 +22,7 @@ public class InMemoryUserStorage implements UserStorage {
         user.setId(getNextId());
 
         if (user.getFriends() == null) {
-            user.setFriends(new java.util.HashSet<>());
+            user.setFriends(new HashMap<>());
         }
 
         users.put(user.getId(), user);
@@ -40,6 +41,10 @@ public class InMemoryUserStorage implements UserStorage {
         existingUser.setLogin(user.getLogin());
         existingUser.setName(user.getName());
         existingUser.setBirthday(user.getBirthday());
+
+        if (user.getFriends() != null) {
+            existingUser.setFriends(user.getFriends());
+        }
 
         log.debug("Пользователь обновлен: id={}", user.getId());
 
@@ -89,5 +94,13 @@ public class InMemoryUserStorage implements UserStorage {
 
     private long getNextId() {
         return ++currentId;
+    }
+
+    public Map<Long, FriendshipStatus> getUserFriendsWithStatus(Long userId) {
+        User user = users.get(userId);
+        if (user == null) {
+            return new HashMap<>();
+        }
+        return user.getFriends() != null ? user.getFriends() : new HashMap<>();
     }
 }
