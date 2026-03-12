@@ -12,7 +12,6 @@ import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
-import ru.yandex.practicum.filmorate.storage.MpaStorage;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -75,22 +74,18 @@ public class FilmDbStorage implements FilmStorage {
     private static final String SQL_DELETE_FILM_GENRES =
         "DELETE FROM film_genres WHERE film_id = ?";
 
-    private final JdbcTemplate jdbcTemplate;
-    private final MpaStorage mpaStorage;
+    private static final String SQL_SELECT_MPA_BY_ID =
+        "SELECT id, name FROM mpa_ratings WHERE id = ?";
 
-    public FilmDbStorage(JdbcTemplate jdbcTemplate, MpaStorage mpaStorage) {
+    private final JdbcTemplate jdbcTemplate;
+
+    public FilmDbStorage(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.mpaStorage = mpaStorage;
     }
 
     @Override
     public Film createFilm(Film film) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
-
-        // Проверяем существование MPA
-        if (film.getMpa() != null && !mpaStorage.existsById(film.getMpa().getId())) {
-            throw new IllegalArgumentException("MPA рейтинг с id " + film.getMpa().getId() + " не существует");
-        }
 
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(SQL_INSERT_FILM, Statement.RETURN_GENERATED_KEYS);
@@ -118,11 +113,6 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Film updateFilm(Film film) {
-        // Проверяем существование MPA
-        if (film.getMpa() != null && !mpaStorage.existsById(film.getMpa().getId())) {
-            throw new IllegalArgumentException("MPA рейтинг с id " + film.getMpa().getId() + " не существует");
-        }
-
         int mpaId = film.getMpa() != null ? film.getMpa().getId() : 1;
 
         jdbcTemplate.update(SQL_UPDATE_FILM,
@@ -155,12 +145,11 @@ public class FilmDbStorage implements FilmStorage {
         for (Film film : films) {
             film.setGenres(genresMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
 
-            // Загружаем полную информацию о MPA через MpaStorage
             if (film.getMpa() != null && film.getMpa().getId() > 0) {
-                mpaStorage.findById(film.getMpa().getId())
-                    .ifPresent(mpa -> {
-                        film.getMpa().setName(mpa.getName());
-                    });
+                Mpa mpa = getMpaById(film.getMpa().getId());
+                if (mpa != null) {
+                    film.getMpa().setName(mpa.getName());
+                }
             }
         }
 
@@ -175,12 +164,11 @@ public class FilmDbStorage implements FilmStorage {
             if (film != null) {
                 film.setGenres(getGenresForFilm(id));
 
-                // Загружаем полную информацию о MPA через MpaStorage
                 if (film.getMpa() != null && film.getMpa().getId() > 0) {
-                    mpaStorage.findById(film.getMpa().getId())
-                        .ifPresent(mpa -> {
-                            film.getMpa().setName(mpa.getName());
-                        });
+                    Mpa mpa = getMpaById(film.getMpa().getId());
+                    if (mpa != null) {
+                        film.getMpa().setName(mpa.getName());
+                    }
                 }
 
                 return Optional.of(film);
@@ -188,8 +176,14 @@ public class FilmDbStorage implements FilmStorage {
         } catch (EmptyResultDataAccessException e) {
             log.debug("Фильм с id {} не найден", id);
         }
-
+ 
         return Optional.empty();
+    }
+
+    @Override
+    public boolean deleteFilm(Long id) {
+        deleteGenres(id);
+        return jdbcTemplate.update(SQL_DELETE_FILM, id) > 0;
     }
 
     @Override
@@ -221,12 +215,11 @@ public class FilmDbStorage implements FilmStorage {
         for (Film film : films) {
             film.setGenres(genresMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
 
-            // Загружаем полную информацию о MPA через MpaStorage
             if (film.getMpa() != null && film.getMpa().getId() > 0) {
-                mpaStorage.findById(film.getMpa().getId())
-                    .ifPresent(mpa -> {
-                        film.getMpa().setName(mpa.getName());
-                    });
+                Mpa mpa = getMpaById(film.getMpa().getId());
+                if (mpa != null) {
+                    film.getMpa().setName(mpa.getName());
+                }
             }
         }
 
@@ -249,7 +242,23 @@ public class FilmDbStorage implements FilmStorage {
         if (id == null) {
             return null;
         }
-        return mpaStorage.findById(id).orElse(null);
+        
+        try {
+            return jdbcTemplate.queryForObject(SQL_SELECT_MPA_BY_ID, (rs, rowNum) -> {
+                Mpa mpa = new Mpa();
+                mpa.setId(rs.getInt("id"));
+                mpa.setName(rs.getString("name"));
+                return mpa;
+            }, id);
+        } catch (EmptyResultDataAccessException e) {
+            log.warn("MPA с id {} не найден", id);
+            return null;
+        }
+    }
+
+    // Метод для обратной совместимости с тестами
+    public Set<Long> getLikesForFilm(Long filmId) {
+        return getFilmLikes(filmId);
     }
 
     private final RowMapper<Film> filmRowMapper = (rs, rowNum) -> {
