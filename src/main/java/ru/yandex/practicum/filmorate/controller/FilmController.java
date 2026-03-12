@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 
-import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -30,7 +29,7 @@ public class FilmController {
     public Film createFilm(@RequestBody Film film) {
         Film createdFilm = filmService.createFilm(film);
         log.info("Фильм {} успешно создан", createdFilm.getId());
-        return enrichFilmWithDetails(createdFilm);
+        return createdFilm;
     }
 
     @PutMapping
@@ -38,21 +37,19 @@ public class FilmController {
     public Film updateFilm(@RequestBody Film film) {
         Film updatedFilm = filmService.updateFilm(film);
         log.info("Фильм с id {} успешно обновлен", film.getId());
-        return enrichFilmWithDetails(updatedFilm);
+        return updatedFilm;
     }
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public List<Film> findAllFilms() {
-        return filmService.findAllFilms().stream()
-                .map(this::enrichFilmWithDetails)
-                .toList();
+        return filmService.findAllFilms();
     }
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public Film getFilmById(@PathVariable Long id) {
-        return enrichFilmWithDetails(filmService.getFilmById(id));
+        return filmService.getFilmById(id);
     }
 
     @PutMapping("/{id}/like/{userId}")
@@ -71,17 +68,6 @@ public class FilmController {
     @ResponseStatus(HttpStatus.OK)
     public List<Film> getMostPopularFilms(@RequestParam(defaultValue = "10")
                                           @Positive(message = "Количество фильмов должно быть положительным") Integer count) {
-        return filmService.getMostPopularFilms(count).stream()
-                .map(this::enrichFilmWithDetails)
-                .toList();
-    }
-
-    private Film enrichFilmWithDetails(Film film) {
-        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
-            List<Genre> sortedGenres = new ArrayList<>(film.getGenres());
-            sortedGenres.sort(Comparator.comparingInt(Genre::getId));
-            film.setGenres(new LinkedHashSet<>(sortedGenres));
-        }
-        return film;
+        return filmService.getMostPopularFilms(count);
     }
 }
