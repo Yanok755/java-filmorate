@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.storage.genre.mapper.GenreRowMapper;
+import ru.yandex.practicum.filmorate.storage.mapper.GenreRowMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.List;
