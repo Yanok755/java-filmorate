@@ -14,7 +14,7 @@ public interface UserStorage {
     User getUserById(Long id);
 
     boolean containsUser(Long id);
-    
+
     // Методы для работы с друзьями
     void addFriend(Long userId, Long friendId);
 
