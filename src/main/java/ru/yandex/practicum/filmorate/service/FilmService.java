@@ -26,7 +26,7 @@ public class FilmService {
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
 
     public Film createFilm(Film film) {
-        log.debug("Создание нового фильма: {}", film);
+        log.debug("Создание нового фильма: {}", film.getName());
 
         validateFilm(film, "создании");
         validateMpaAndGenres(film);
@@ -60,9 +60,7 @@ public class FilmService {
     }
 
     public List<Film> findAllFilms() {
-        return filmStorage.findAllFilms().stream()
-                .map(this::enrichFilmWithDetails)
-                .toList();
+        return new ArrayList<>(filmStorage.findAllFilms());
     }
 
     public Film getFilmById(Long id) {
