@@ -13,18 +13,14 @@ import java.util.Optional;
 public class InMemoryFilmStorage implements FilmStorage {
 
     private final Map<Long, Film> films = new HashMap<>();
-
     private long currentId = 0;
 
     @Override
     public Film createFilm(Film film) {
         film.setId(getNextId());
-
         films.put(film.getId(), film);
 
-        log.debug("Фильм сохранен: id={}, название='{}'",
-                film.getId(), film.getName());
-
+        log.debug("Фильм сохранен: id={}, название='{}'", film.getId(), film.getName());
         return film;
     }
 
@@ -36,23 +32,22 @@ public class InMemoryFilmStorage implements FilmStorage {
         existingFilm.setDescription(film.getDescription());
         existingFilm.setReleaseDate(film.getReleaseDate());
         existingFilm.setDuration(film.getDuration());
+        existingFilm.setMpa(film.getMpa());
+        existingFilm.setGenres(film.getGenres());
 
         log.debug("Фильм обновлен: id={}", film.getId());
-
         return existingFilm;
     }
 
     @Override
     public Collection<Film> findAllFilms() {
         log.debug("Получены все фильмы. Всего: {} фильмов", films.size());
-
         return films.values();
     }
 
     @Override
     public Optional<Film> getFilmById(Long id) {
-        log.debug("Поиск фильма по id: {}", id);  // ИСПРАВЛЕНО: trace -> debug
-
+        log.trace("Поиск фильма по id: {}", id);
         return Optional.ofNullable(films.get(id));
     }
 
@@ -63,7 +58,6 @@ public class InMemoryFilmStorage implements FilmStorage {
             log.debug("Фильм удален: id={}", id);
             return true;
         }
-
         log.warn("Попытка удалить несуществующий фильм: id={}", id);
         return false;
     }
@@ -71,14 +65,14 @@ public class InMemoryFilmStorage implements FilmStorage {
     @Override
     public boolean containsFilm(Long id) {
         boolean exists = films.containsKey(id);
-        log.debug("Проверка существования фильма id={}: {}", id, exists);  // ИСПРАВЛЕНО: trace -> debug
+        log.trace("Проверка существования фильма id={}: {}", id, exists);
         return exists;
     }
 
     @Override
     public int getFilmsCount() {
         int count = films.size();
-        log.debug("Текущее количество фильмов: {}", count);  // ИСПРАВЛЕНО: trace -> debug
+        log.trace("Текущее количество фильмов: {}", count);
         return count;
     }
 
