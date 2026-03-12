@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
@@ -21,10 +20,13 @@ import java.util.*;
 @Repository
 @Qualifier("userDbStorage")
 @Primary
-@RequiredArgsConstructor
 public class UserDbStorage implements UserStorage {
 
     private final JdbcTemplate jdbcTemplate;
+
+    public UserDbStorage(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     private final RowMapper<User> userRowMapper = (rs, rowNum) -> {
         User user = new User();
@@ -33,7 +35,6 @@ public class UserDbStorage implements UserStorage {
         user.setLogin(rs.getString("login"));
         user.setName(rs.getString("name"));
         user.setBirthday(rs.getDate("birthday").toLocalDate());
-        user.setFriends(getFriends(user.getId()));
         return user;
     };
 
@@ -47,7 +48,7 @@ public class UserDbStorage implements UserStorage {
             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, user.getEmail());
             ps.setString(2, user.getLogin());
-            ps.setString(3, user.getName());
+            ps.setString(3, user.getName() != null ? user.getName() : user.getLogin());
             ps.setDate(4, Date.valueOf(user.getBirthday()));
             return ps;
         }, keyHolder);
@@ -57,7 +58,6 @@ public class UserDbStorage implements UserStorage {
             user.setId(key.longValue());
         }
 
-        log.debug("Пользователь сохранен в БД: id={}", user.getId());
         return user;
     }
 
@@ -73,7 +73,6 @@ public class UserDbStorage implements UserStorage {
                 user.getId()
         );
 
-        log.debug("Пользователь обновлен в БД: id={}", user.getId());
         return user;
     }
 
@@ -110,7 +109,22 @@ public class UserDbStorage implements UserStorage {
         return count != null ? count : 0;
     }
 
-    private Map<Long, FriendshipStatus> getFriends(Long userId) {
+    public void addFriend(Long userId, Long friendId) {
+        String sql = "INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, ?)";
+        jdbcTemplate.update(sql, userId, friendId, FriendshipStatus.PENDING.name());
+    }
+
+    public void removeFriend(Long userId, Long friendId) {
+        String sql = "DELETE FROM friendships WHERE user_id = ? AND friend_id = ?";
+        jdbcTemplate.update(sql, userId, friendId);
+    }
+
+    public List<Long> getFriendIds(Long userId) {
+        String sql = "SELECT friend_id FROM friendships WHERE user_id = ?";
+        return jdbcTemplate.queryForList(sql, Long.class, userId);
+    }
+
+    public Map<Long, FriendshipStatus> getFriends(Long userId) {
         String sql = "SELECT friend_id, status FROM friendships WHERE user_id = ?";
         Map<Long, FriendshipStatus> friends = new HashMap<>();
 
@@ -120,5 +134,16 @@ public class UserDbStorage implements UserStorage {
         }, userId);
 
         return friends;
+    }
+
+    public List<User> getFriends(List<Long> friendIds) {
+        if (friendIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String inSql = String.join(",", Collections.nCopies(friendIds.size(), "?"));
+        String sql = "SELECT * FROM users WHERE id IN (" + inSql + ")";
+
+        return jdbcTemplate.query(sql, userRowMapper, friendIds.toArray());
     }
 }
