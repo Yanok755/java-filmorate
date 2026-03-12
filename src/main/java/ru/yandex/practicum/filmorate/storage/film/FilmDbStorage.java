@@ -248,16 +248,4 @@ public class FilmDbStorage implements FilmStorage {
 
         return genresMap;
     }
-
-    private void loadMpaNameForFilm(Film film) {
-        if (film.getMpa() != null && film.getMpa().getId() != null) {
-            String sql = "SELECT mpa_name FROM mpa_ratings WHERE mpa_id = ?";
-            try {
-                String mpaName = jdbcTemplate.queryForObject(sql, String.class, film.getMpa().getId());
-                film.getMpa().setName(mpaName);
-            } catch (EmptyResultDataAccessException e) {
-                log.warn("MPA с id {} не найден", film.getMpa().getId());
-            }
-        }
-    }
 }
