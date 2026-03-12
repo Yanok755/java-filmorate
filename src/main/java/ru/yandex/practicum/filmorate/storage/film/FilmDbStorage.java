@@ -193,20 +193,9 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
-    public boolean deleteFilm(Long id) {
-        return jdbcTemplate.update(SQL_DELETE_FILM, id) > 0;
-    }
-
-    @Override
     public boolean containsFilm(Long id) {
         Integer count = jdbcTemplate.queryForObject(SQL_COUNT_FILM_BY_ID, Integer.class, id);
         return count != null && count > 0;
-    }
-
-    @Override
-    public int getFilmsCount() {
-        Integer count = jdbcTemplate.queryForObject(SQL_COUNT_FILMS, Integer.class);
-        return count != null ? count : 0;
     }
 
     @Override
@@ -220,8 +209,8 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
-    public Collection<Film> getMostPopularFilms(int count) {
-        List<Film> films = jdbcTemplate.query(SQL_SELECT_POPULAR_FILMS, filmRowMapper, count);
+    public Collection<Film> getMostPopularFilms(Integer limit) {
+        List<Film> films = jdbcTemplate.query(SQL_SELECT_POPULAR_FILMS, filmRowMapper, limit);
 
         if (films.isEmpty()) {
             return films;
@@ -251,16 +240,16 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
-    public Set<Long> getLikesForFilm(Long filmId) {
+    public Set<Long> getFilmLikes(Long filmId) {
         return new HashSet<>(jdbcTemplate.queryForList(SQL_SELECT_LIKES, Long.class, filmId));
     }
 
     @Override
-    public Optional<Mpa> getMpaById(Integer id) {
+    public Mpa getMpaById(Integer id) {
         if (id == null) {
-            return Optional.empty();
+            return null;
         }
-        return mpaStorage.findById(id);
+        return mpaStorage.findById(id).orElse(null);
     }
 
     private final RowMapper<Film> filmRowMapper = (rs, rowNum) -> {
@@ -275,7 +264,6 @@ public class FilmDbStorage implements FilmStorage {
         if (mpaId > 0) {
             Mpa mpa = new Mpa();
             mpa.setId(mpaId);
-            // Имя будет заполнено позже через MpaStorage
             film.setMpa(mpa);
         }
 
