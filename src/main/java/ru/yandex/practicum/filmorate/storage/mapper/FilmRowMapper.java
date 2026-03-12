@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.storage.mapper;
+package ru.yandex.practicum.filmorate.storage.film.mapper;
 
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
@@ -14,21 +14,15 @@ public class FilmRowMapper implements RowMapper<Film> {
     @Override
     public Film mapRow(ResultSet rs, int rowNum) throws SQLException {
         Film film = new Film();
-        film.setId(rs.getLong("film_id"));
+        film.setId(rs.getLong("id"));
         film.setName(rs.getString("name"));
         film.setDescription(rs.getString("description"));
         film.setReleaseDate(rs.getDate("release_date").toLocalDate());
         film.setDuration(rs.getInt("duration"));
 
+        int mpaId = rs.getInt("mpa_rating_id");
         Mpa mpa = new Mpa();
-        mpa.setId(rs.getInt("mpa_id"));
-
-        try {
-            mpa.setName(rs.getString("mpa_name"));
-        } catch (SQLException e) {
-            // Игнорируем, если имени нет в результате запроса
-        }
-
+        mpa.setId(mpaId);
         film.setMpa(mpa);
 
         return film;
