@@ -76,7 +76,7 @@ public class FilmDbStorage implements FilmStorage {
         "DELETE FROM film_genres WHERE film_id = ?";
 
     private final JdbcTemplate jdbcTemplate;
-    private final MpaStorage mpaStorage; // Внедряем MpaStorage
+    private final MpaStorage mpaStorage;
 
     public FilmDbStorage(JdbcTemplate jdbcTemplate, MpaStorage mpaStorage) {
         this.jdbcTemplate = jdbcTemplate;
@@ -188,7 +188,7 @@ public class FilmDbStorage implements FilmStorage {
         } catch (EmptyResultDataAccessException e) {
             log.debug("Фильм с id {} не найден", id);
         }
-
+        
         return Optional.empty();
     }
 
@@ -209,14 +209,17 @@ public class FilmDbStorage implements FilmStorage {
         return count != null ? count : 0;
     }
 
+    @Override
     public void addLike(Long filmId, Long userId) {
         jdbcTemplate.update(SQL_INSERT_LIKE, filmId, userId);
     }
 
+    @Override
     public void removeLike(Long filmId, Long userId) {
         jdbcTemplate.update(SQL_DELETE_LIKE, filmId, userId);
     }
 
+    @Override
     public Collection<Film> getMostPopularFilms(int count) {
         List<Film> films = jdbcTemplate.query(SQL_SELECT_POPULAR_FILMS, filmRowMapper, count);
 
@@ -241,13 +244,23 @@ public class FilmDbStorage implements FilmStorage {
         return films;
     }
 
+    @Override
     public int getLikesCount(Long filmId) {
         Integer count = jdbcTemplate.queryForObject(SQL_COUNT_LIKES, Integer.class, filmId);
         return count != null ? count : 0;
     }
 
+    @Override
     public Set<Long> getLikesForFilm(Long filmId) {
         return new HashSet<>(jdbcTemplate.queryForList(SQL_SELECT_LIKES, Long.class, filmId));
+    }
+
+    @Override
+    public Optional<Mpa> getMpaById(Integer id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+        return mpaStorage.findById(id);
     }
 
     private final RowMapper<Film> filmRowMapper = (rs, rowNum) -> {
