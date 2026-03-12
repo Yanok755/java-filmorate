@@ -176,7 +176,7 @@ public class FilmDbStorage implements FilmStorage {
         } catch (EmptyResultDataAccessException e) {
             log.debug("Фильм с id {} не найден", id);
         }
- 
+
         return Optional.empty();
     }
 
@@ -242,7 +242,7 @@ public class FilmDbStorage implements FilmStorage {
         if (id == null) {
             return null;
         }
-        
+
         try {
             return jdbcTemplate.queryForObject(SQL_SELECT_MPA_BY_ID, (rs, rowNum) -> {
                 Mpa mpa = new Mpa();
