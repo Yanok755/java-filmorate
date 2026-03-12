@@ -10,6 +10,7 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Objects;  // <- ДОБАВИТЬ ЭТОТ ИМПОРТ
 import java.util.Set;
 
 @Slf4j
