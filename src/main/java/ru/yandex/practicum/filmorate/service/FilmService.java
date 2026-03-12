@@ -14,7 +14,7 @@ import ru.yandex.practicum.filmorate.storage.GenreStorage;
 import ru.yandex.practicum.filmorate.storage.MpaStorage;
 
 import java.time.LocalDate;
-import java.util.Collection;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -31,58 +31,58 @@ public class FilmService {
     public Film createFilm(Film film) {
         log.debug("Создание нового фильма: {}", film);
 
-        // Полная валидация фильма
         validateFilm(film, "создании");
         validateMpaAndGenres(film);
 
         Film createdFilm = filmStorage.createFilm(film);
         log.info("Фильм успешно создан с id: {}", createdFilm.getId());
-        return createdFilm;
+
+        return enrichFilmWithDetails(createdFilm);
     }
 
     public Film updateFilm(Film film) {
         log.debug("Обновление фильма с id: {}", film.getId());
 
-        // Проверка наличия ID
         if (film.getId() == null) {
             log.error("ID фильма не может быть null при обновлении");
             throw new ValidationException("ID фильма должен быть указан");
         }
 
-        // Проверка существования фильма
         if (!filmStorage.containsFilm(film.getId())) {
             log.error("Фильм с id {} не найден", film.getId());
             throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
         }
 
-        // Полная валидация фильма
         validateFilm(film, "обновлении");
         validateMpaAndGenres(film);
 
         Film updatedFilm = filmStorage.updateFilm(film);
         log.info("Фильм с id {} успешно обновлен", film.getId());
-        return updatedFilm;
+
+        return enrichFilmWithDetails(updatedFilm);
     }
 
-    public Collection<Film> findAllFilms() {
-        return filmStorage.findAllFilms();
+    public List<Film> findAllFilms() {
+        return filmStorage.findAllFilms().stream()
+                .map(this::enrichFilmWithDetails)
+                .toList();
     }
 
     public Film getFilmById(Long id) {
-        return filmStorage.getFilmById(id)
+        Film film = filmStorage.getFilmById(id)
                 .orElseThrow(() -> {
                     log.error("Фильм с id {} не найден", id);
                     return new NotFoundException("Фильм с id " + id + " не найден");
                 });
+
+        return enrichFilmWithDetails(film);
     }
 
     public void addLike(Long filmId, Long userId) {
         log.debug("Добавление лайка к фильму {} от пользователя {}", filmId, userId);
 
-        // Проверка существования фильма
         getFilmById(filmId);
 
-        // Проверка существования пользователя
         if (!userStorage.containsUser(userId)) {
             log.error("Пользователь с id {} не найден", userId);
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
@@ -97,10 +97,8 @@ public class FilmService {
     public void removeLike(Long filmId, Long userId) {
         log.debug("Удаление лайка с фильма {} от пользователя {}", filmId, userId);
 
-        // Проверка существования фильма
         getFilmById(filmId);
 
-        // Проверка существования пользователя
         if (!userStorage.containsUser(userId)) {
             log.error("Пользователь с id {} не найден", userId);
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
@@ -112,45 +110,60 @@ public class FilmService {
         }
     }
 
-    public Collection<Film> getMostPopularFilms(Integer count) {
+    public List<Film> getMostPopularFilms(Integer count) {
         int limit = count != null ? count : 10;
         log.debug("Получение топ-{} популярных фильмов", limit);
 
+        Collection<Film> films;
+
         if (filmStorage instanceof FilmDbStorage) {
-            return ((FilmDbStorage) filmStorage).getMostPopularFilms(limit);
+            films = ((FilmDbStorage) filmStorage).getMostPopularFilms(limit);
+        } else {
+            // Fallback для in-memory хранилища
+            films = filmStorage.findAllFilms().stream()
+                    .sorted((f1, f2) -> {
+                        int likes1 = filmStorage instanceof FilmDbStorage ?
+                                ((FilmDbStorage) filmStorage).getLikesCount(f1.getId()) : 0;
+                        int likes2 = filmStorage instanceof FilmDbStorage ?
+                                ((FilmDbStorage) filmStorage).getLikesCount(f2.getId()) : 0;
+                        return Integer.compare(likes2, likes1);
+                    })
+                    .limit(limit)
+                    .toList();
         }
 
-        // Fallback для in-memory хранилища
-        return filmStorage.findAllFilms().stream()
-                .sorted((f1, f2) -> {
-                    int likes1 = filmStorage instanceof FilmDbStorage ?
-                            ((FilmDbStorage) filmStorage).getLikesCount(f1.getId()) : 0;
-                    int likes2 = filmStorage instanceof FilmDbStorage ?
-                            ((FilmDbStorage) filmStorage).getLikesCount(f2.getId()) : 0;
-                    return Integer.compare(likes2, likes1);
-                })
-                .limit(limit)
+        return films.stream()
+                .map(this::enrichFilmWithDetails)
                 .toList();
+    }
+
+    /**
+     * Обогащение фильма дополнительными деталями (сортировка жанров)
+     */
+    private Film enrichFilmWithDetails(Film film) {
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            List<Genre> sortedGenres = new ArrayList<>(film.getGenres());
+            sortedGenres.sort(Comparator.comparingInt(Genre::getId));
+            film.setGenres(new LinkedHashSet<>(sortedGenres));
+        }
+        return film;
     }
 
     /**
      * Валидация полей фильма
      */
     private void validateFilm(Film film, String operation) {
-        // Проверка названия
         if (film.getName() == null || film.getName().isBlank()) {
             log.error("Ошибка валидации при {}: название фильма не должно быть пустым", operation);
             throw new ValidationException("Название фильма не должно быть пустым");
         }
 
-        // Проверка описания
         if (film.getDescription() != null && film.getDescription().length() > 200) {
             log.error("Ошибка валидации при {}: длина описания {} превышает 200 символов",
                      operation, film.getDescription().length());
             throw new ValidationException("Максимальная длина описания — 200 символов");
         }
 
-        // Проверка даты релиза
         if (film.getReleaseDate() == null) {
             log.error("Ошибка валидации при {}: дата релиза не указана", operation);
             throw new ValidationException("Дата релиза должна быть указана");
@@ -162,7 +175,6 @@ public class FilmService {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
 
-        // Проверка продолжительности
         if (film.getDuration() == null) {
             log.error("Ошибка валидации при {}: продолжительность фильма не указана", operation);
             throw new ValidationException("Продолжительность фильма должна быть указана");
@@ -179,7 +191,6 @@ public class FilmService {
      * Валидация MPA и жанров
      */
     private void validateMpaAndGenres(Film film) {
-        // Проверка MPA
         if (film.getMpa() != null) {
             if (!mpaStorage.existsById(film.getMpa().getId())) {
                 log.error("Неверный id MPA: {}", film.getMpa().getId());
@@ -187,7 +198,6 @@ public class FilmService {
             }
         }
 
-        // Проверка жанров
         if (film.getGenres() != null) {
             for (Genre genre : film.getGenres()) {
                 if (!genreStorage.existsById(genre.getId())) {
