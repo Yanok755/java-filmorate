@@ -154,7 +154,7 @@ public class FilmDbStorage implements FilmStorage {
                         film.getMpa().setName(mpa.getName());
                     }
                 }
- 
+
                 return Optional.of(film);
             }
         } catch (EmptyResultDataAccessException e) {
