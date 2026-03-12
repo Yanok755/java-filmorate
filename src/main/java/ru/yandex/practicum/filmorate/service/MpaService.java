@@ -21,13 +21,17 @@ public class MpaService {
         return mpaStorage.findAll();
     }
 
-    public Mpa getMpaById(int id) {
-        log.debug("Получение рейтинга MPA с id: {}", id);
-
+    public Mpa getMpaById(Integer id) {
+        log.debug("Получение рейтинга MPA с id {}", id);
         return mpaStorage.findById(id)
                 .orElseThrow(() -> {
                     log.error("Рейтинг MPA с id {} не найден", id);
                     return new NotFoundException("Рейтинг MPA с id " + id + " не найден");
                 });
+    }
+
+    public boolean existsById(Integer id) {
+        log.debug("Проверка существования рейтинга MPA с id {}", id);
+        return mpaStorage.existsById(id);
     }
 }
