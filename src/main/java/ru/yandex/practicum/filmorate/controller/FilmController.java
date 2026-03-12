@@ -27,47 +27,56 @@ public class FilmController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Film createFilm(@RequestBody Film film) {
+        log.info("Запрос на создание фильма: {}", film.getName());
         Film createdFilm = filmService.createFilm(film);
-        log.info("Фильм {} успешно создан", createdFilm.getId());
+        log.info("Фильм {} успешно создан с id: {}", createdFilm.getName(), createdFilm.getId());
         return createdFilm;
     }
 
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
     public Film updateFilm(@RequestBody Film film) {
+        log.info("Запрос на обновление фильма с id: {}", film.getId());
         Film updatedFilm = filmService.updateFilm(film);
-        log.info("Фильм с id {} успешно обновлен", film.getId());
+        log.info("Фильм с id {} успешно обновлен", updatedFilm.getId());
         return updatedFilm;
     }
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public List<Film> findAllFilms() {
+        log.info("Запрос на получение всех фильмов");
         return filmService.findAllFilms();
     }
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public Film getFilmById(@PathVariable Long id) {
+        log.info("Запрос на получение фильма с id: {}", id);
         return filmService.getFilmById(id);
     }
 
     @PutMapping("/{id}/like/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void addLike(@PathVariable Long id, @PathVariable Long userId) {
+        log.info("Запрос на добавление лайка: фильм {} от пользователя {}", id, userId);
         filmService.addLike(id, userId);
+        log.info("Лайк успешно добавлен: фильм {}, пользователь {}", id, userId);
     }
 
     @DeleteMapping("/{id}/like/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeLike(@PathVariable Long id, @PathVariable Long userId) {
+        log.info("Запрос на удаление лайка: фильм {} от пользователя {}", id, userId);
         filmService.removeLike(id, userId);
+        log.info("Лайк успешно удален: фильм {}, пользователь {}", id, userId);
     }
 
     @GetMapping("/popular")
     @ResponseStatus(HttpStatus.OK)
     public List<Film> getMostPopularFilms(@RequestParam(defaultValue = "10")
                                           @Positive(message = "Количество фильмов должно быть положительным") Integer count) {
+        log.info("Запрос на получение топ-{} популярных фильмов", count);
         return filmService.getMostPopularFilms(count);
     }
 }
