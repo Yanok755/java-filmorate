@@ -24,28 +24,28 @@ import java.util.*;
 @Qualifier("filmDbStorage")
 @Primary
 public class FilmDbStorage implements FilmStorage {
-    
+
     // SQL константы
     private static final String SQL_INSERT_FILM = 
         "INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES (?, ?, ?, ?, ?)";
-    
+
     private static final String SQL_UPDATE_FILM = 
         "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? WHERE id = ?";
-    
+
     private static final String SQL_SELECT_ALL_FILMS = "SELECT * FROM films";
-    
+
     private static final String SQL_SELECT_FILM_BY_ID = "SELECT * FROM films WHERE id = ?";
-    
+
     private static final String SQL_DELETE_FILM = "DELETE FROM films WHERE id = ?";
-    
+
     private static final String SQL_COUNT_FILMS = "SELECT COUNT(*) FROM films";
-    
+
     private static final String SQL_COUNT_FILM_BY_ID = "SELECT COUNT(*) FROM films WHERE id = ?";
-    
+
     private static final String SQL_INSERT_LIKE = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
-    
+
     private static final String SQL_DELETE_LIKE = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
-    
+
     private static final String SQL_SELECT_POPULAR_FILMS = 
         "SELECT f.*, COUNT(l.user_id) as likes_count " +
         "FROM films f " +
@@ -53,25 +53,25 @@ public class FilmDbStorage implements FilmStorage {
         "GROUP BY f.id " +
         "ORDER BY likes_count DESC " +
         "LIMIT ?";
-    
+
     private static final String SQL_COUNT_LIKES = "SELECT COUNT(*) FROM likes WHERE film_id = ?";
-    
+
     private static final String SQL_SELECT_LIKES = "SELECT user_id FROM likes WHERE film_id = ?";
-    
+
     private static final String SQL_SELECT_FILM_GENRES = 
         "SELECT g.id, g.name FROM genres g " +
         "JOIN film_genres fg ON g.id = fg.genre_id " +
         "WHERE fg.film_id = ? ORDER BY g.id";
-    
+
     private static final String SQL_SELECT_GENRES_FOR_FILMS = 
         "SELECT fg.film_id, g.id, g.name FROM genres g " +
         "JOIN film_genres fg ON g.id = fg.genre_id " +
         "WHERE fg.film_id IN (%s) " +
         "ORDER BY fg.film_id, g.id";
-    
+
     private static final String SQL_INSERT_FILM_GENRE = 
         "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
-    
+
     private static final String SQL_DELETE_FILM_GENRES = 
         "DELETE FROM film_genres WHERE film_id = ?";
 
@@ -154,7 +154,7 @@ public class FilmDbStorage implements FilmStorage {
 
         for (Film film : films) {
             film.setGenres(genresMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
-            
+
             // Загружаем полную информацию о MPA через MpaStorage
             if (film.getMpa() != null && film.getMpa().getId() > 0) {
                 mpaStorage.findById(film.getMpa().getId())
@@ -171,10 +171,10 @@ public class FilmDbStorage implements FilmStorage {
     public Optional<Film> getFilmById(Long id) {
         try {
             Film film = jdbcTemplate.queryForObject(SQL_SELECT_FILM_BY_ID, filmRowMapper, id);
-            
+
             if (film != null) {
                 film.setGenres(getGenresForFilm(id));
-                
+
                 // Загружаем полную информацию о MPA через MpaStorage
                 if (film.getMpa() != null && film.getMpa().getId() > 0) {
                     mpaStorage.findById(film.getMpa().getId())
@@ -182,13 +182,13 @@ public class FilmDbStorage implements FilmStorage {
                             film.getMpa().setName(mpa.getName());
                         });
                 }
-                
+
                 return Optional.of(film);
             }
         } catch (EmptyResultDataAccessException e) {
             log.debug("Фильм с id {} не найден", id);
         }
-        
+
         return Optional.empty();
     }
 
