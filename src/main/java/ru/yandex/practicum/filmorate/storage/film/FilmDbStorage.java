@@ -119,7 +119,7 @@ public class FilmDbStorage implements FilmStorage {
     public boolean containsFilm(Long id) {
         String sql = "SELECT COUNT(*) FROM films WHERE film_id = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
-        return count != null && count > 0;
+        return count > 0;
     }
 
     @Override
@@ -127,7 +127,7 @@ public class FilmDbStorage implements FilmStorage {
         String checkSql = "SELECT COUNT(*) FROM likes WHERE film_id = ? AND user_id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, filmId, userId);
 
-        if (count == null || count == 0) {
+        if (count == 0) {
             String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
             jdbcTemplate.update(sql, filmId, userId);
             log.debug("Лайк добавлен: фильм {}, пользователь {}", filmId, userId);
