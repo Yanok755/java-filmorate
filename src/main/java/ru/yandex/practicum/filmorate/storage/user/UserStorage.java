@@ -1,11 +1,14 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
-
 import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface UserStorage {
+    // Базовые CRUD операции
     User createUser(User user);
 
     User updateUser(User user);
@@ -20,11 +23,24 @@ public interface UserStorage {
 
     int getUsersCount();
 
+    // Методы для работы с друзьями
     void addFriend(Long userId, Long friendId);
 
     void removeFriend(Long userId, Long friendId);
 
-    Collection<User> getUserFriends(Long userId);
+    Collection<Long> getFriendIds(Long userId);
 
+    Map<Long, FriendshipStatus> getFriendsWithStatus(Long userId);
+
+    Collection<User> getFriendsAsUsers(Long userId);
+
+    // Метод для получения общих друзей (оптимизированный)
     Collection<User> getCommonFriends(Long userId, Long otherId);
+
+    // Дополнительные методы
+    boolean areFriends(Long userId, Long otherId);
+
+    int getFriendsCount(Long userId);
+
+    void updateFriendshipStatus(Long userId, Long friendId, FriendshipStatus status);
 }
