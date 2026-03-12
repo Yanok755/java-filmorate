@@ -160,15 +160,15 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
-    public int getLikesCount(Long filmId) {
-        String sql = "SELECT COUNT(*) FROM likes WHERE film_id = ?";
-        try {
-            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, filmId);
-            return count != null ? count : 0;
-        } catch (EmptyResultDataAccessException e) {
-            return 0;
-        }
+public int getLikesCount(Long filmId) {
+    String sql = "SELECT COUNT(*) FROM likes WHERE film_id = ?";
+    try {
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, filmId);
+        return count;
+    } catch (EmptyResultDataAccessException e) {
+        return 0;
     }
+}
 
     @Override
     public Set<Long> getFilmLikes(Long filmId) {
