@@ -45,8 +45,23 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public boolean deleteFilm(Long id) {
+        if (films.containsKey(id)) {
+            films.remove(id);
+            likes.remove(id);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     public boolean containsFilm(Long id) {
         return films.containsKey(id);
+    }
+
+    @Override
+    public int getFilmsCount() {
+        return films.size();
     }
 
     @Override
@@ -64,6 +79,16 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public int getLikesCount(Long filmId) {
+        return likes.getOrDefault(filmId, new HashSet<>()).size();
+    }
+
+    @Override
+    public Set<Long> getFilmLikes(Long filmId) {
+        return likes.getOrDefault(filmId, new HashSet<>());
+    }
+
+    @Override
     public Collection<Film> getMostPopularFilms(Integer limit) {
         return films.values().stream()
                 .sorted((f1, f2) -> {
@@ -76,19 +101,7 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public int getLikesCount(Long filmId) {
-        Set<Long> filmLikes = likes.get(filmId);
-        return filmLikes != null ? filmLikes.size() : 0;
-    }
-
-    @Override
-    public Set<Long> getFilmLikes(Long filmId) {
-        return likes.getOrDefault(filmId, new HashSet<>());
-    }
-
-    @Override
     public Mpa getMpaById(Integer id) {
-        // In-memory реализация не имеет доступа к MPA
         throw new UnsupportedOperationException("InMemoryFilmStorage не поддерживает получение MPA по ID");
     }
 }
