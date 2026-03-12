@@ -14,7 +14,11 @@ public interface UserStorage {
 
     Optional<User> getUserById(Long id);
 
+    boolean deleteUser(Long id);
+
     boolean containsUser(Long id);
+
+    int getUsersCount();
 
     void addFriend(Long userId, Long friendId);
 
