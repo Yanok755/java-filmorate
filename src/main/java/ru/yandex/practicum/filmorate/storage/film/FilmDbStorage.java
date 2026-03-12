@@ -41,22 +41,6 @@ public class FilmDbStorage implements FilmStorage {
 
     private static final String SQL_COUNT_FILM_BY_ID = "SELECT COUNT(*) FROM films WHERE id = ?";
 
-    private static final String SQL_INSERT_LIKE = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
-
-    private static final String SQL_DELETE_LIKE = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
-
-    private static final String SQL_SELECT_POPULAR_FILMS =
-        "SELECT f.*, COUNT(l.user_id) as likes_count " +
-        "FROM films f " +
-        "LEFT JOIN likes l ON f.id = l.film_id " +
-        "GROUP BY f.id " +
-        "ORDER BY likes_count DESC " +
-        "LIMIT ?";
-
-    private static final String SQL_COUNT_LIKES = "SELECT COUNT(*) FROM likes WHERE film_id = ?";
-
-    private static final String SQL_SELECT_LIKES = "SELECT user_id FROM likes WHERE film_id = ?";
-
     private static final String SQL_SELECT_FILM_GENRES =
         "SELECT g.id, g.name FROM genres g " +
         "JOIN film_genres fg ON g.id = fg.genre_id " +
@@ -170,7 +154,7 @@ public class FilmDbStorage implements FilmStorage {
                         film.getMpa().setName(mpa.getName());
                     }
                 }
-
+ 
                 return Optional.of(film);
             }
         } catch (EmptyResultDataAccessException e) {
@@ -193,18 +177,31 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
+    public int getFilmsCount() {
+        Integer count = jdbcTemplate.queryForObject(SQL_COUNT_FILMS, Integer.class);
+        return count != null ? count : 0;
+    }
+
+    // Дополнительные методы для работы с лайками и MPA (не входят в интерфейс)
     public void addLike(Long filmId, Long userId) {
-        jdbcTemplate.update(SQL_INSERT_LIKE, filmId, userId);
+        String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
+        jdbcTemplate.update(sql, filmId, userId);
     }
 
-    @Override
     public void removeLike(Long filmId, Long userId) {
-        jdbcTemplate.update(SQL_DELETE_LIKE, filmId, userId);
+        String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
+        jdbcTemplate.update(sql, filmId, userId);
     }
 
-    @Override
-    public Collection<Film> getMostPopularFilms(Integer limit) {
-        List<Film> films = jdbcTemplate.query(SQL_SELECT_POPULAR_FILMS, filmRowMapper, limit);
+    public Collection<Film> getMostPopularFilms(int count) {
+        String sql = "SELECT f.*, COUNT(l.user_id) as likes_count " +
+                "FROM films f " +
+                "LEFT JOIN likes l ON f.id = l.film_id " +
+                "GROUP BY f.id " +
+                "ORDER BY likes_count DESC " +
+                "LIMIT ?";
+
+        List<Film> films = jdbcTemplate.query(sql, filmRowMapper, count);
 
         if (films.isEmpty()) {
             return films;
@@ -226,18 +223,17 @@ public class FilmDbStorage implements FilmStorage {
         return films;
     }
 
-    @Override
     public int getLikesCount(Long filmId) {
-        Integer count = jdbcTemplate.queryForObject(SQL_COUNT_LIKES, Integer.class, filmId);
+        String sql = "SELECT COUNT(*) FROM likes WHERE film_id = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, filmId);
         return count != null ? count : 0;
     }
 
-    @Override
     public Set<Long> getFilmLikes(Long filmId) {
-        return new HashSet<>(jdbcTemplate.queryForList(SQL_SELECT_LIKES, Long.class, filmId));
+        String sql = "SELECT user_id FROM likes WHERE film_id = ?";
+        return new HashSet<>(jdbcTemplate.queryForList(sql, Long.class, filmId));
     }
 
-    @Override
     public Mpa getMpaById(Integer id) {
         if (id == null) {
             return null;
@@ -254,11 +250,6 @@ public class FilmDbStorage implements FilmStorage {
             log.warn("MPA с id {} не найден", id);
             return null;
         }
-    }
-
-    // Метод для обратной совместимости с тестами
-    public Set<Long> getLikesForFilm(Long filmId) {
-        return getFilmLikes(filmId);
     }
 
     private final RowMapper<Film> filmRowMapper = (rs, rowNum) -> {
