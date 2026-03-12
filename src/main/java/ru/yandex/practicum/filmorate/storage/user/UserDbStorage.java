@@ -1,54 +1,40 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Primary;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.model.FriendshipStatus;
+import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.mapper.UserRowMapper;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.sql.Date;
-import java.util.*;
+import java.sql.PreparedStatement;
+import java.util.Collection;
+import java.util.Optional;
 
 @Slf4j
-@Repository
-@Qualifier("userDbStorage")
-@Primary
+@Component
+@RequiredArgsConstructor
 public class UserDbStorage implements UserStorage {
 
     private final JdbcTemplate jdbcTemplate;
-
-    public UserDbStorage(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
-
-    private final RowMapper<User> userRowMapper = (rs, rowNum) -> {
-        User user = new User();
-        user.setId(rs.getLong("id"));
-        user.setEmail(rs.getString("email"));
-        user.setLogin(rs.getString("login"));
-        user.setName(rs.getString("name"));
-        user.setBirthday(rs.getDate("birthday").toLocalDate());
-        return user;
-    };
+    private final UserRowMapper userRowMapper;
 
     @Override
     public User createUser(User user) {
-        String sql = "INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO users (email, login, user_name, birthday) VALUES (?, ?, ?, ?)";
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = connection.prepareStatement(sql, new String[]{"user_id"});
             ps.setString(1, user.getEmail());
             ps.setString(2, user.getLogin());
-            ps.setString(3, user.getName() != null ? user.getName() : user.getLogin());
+            ps.setString(3, user.getName());
             ps.setDate(4, Date.valueOf(user.getBirthday()));
             return ps;
         }, keyHolder);
@@ -58,21 +44,27 @@ public class UserDbStorage implements UserStorage {
             user.setId(key.longValue());
         }
 
+        log.debug("Создан пользователь с id: {}", user.getId());
         return user;
     }
 
     @Override
     public User updateUser(User user) {
-        String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE id = ?";
+        String sql = "UPDATE users SET email = ?, login = ?, user_name = ?, birthday = ? WHERE user_id = ?";
 
-        jdbcTemplate.update(sql,
+        int updated = jdbcTemplate.update(sql,
                 user.getEmail(),
                 user.getLogin(),
                 user.getName(),
                 Date.valueOf(user.getBirthday()),
-                user.getId()
-        );
+                user.getId());
 
+        if (updated == 0) {
+            log.error("Пользователь с id {} не найден при обновлении", user.getId());
+            throw new NotFoundException("Пользователь с id " + user.getId() + " не найден");
+        }
+
+        log.debug("Обновлен пользователь с id: {}", user.getId());
         return user;
     }
 
@@ -84,66 +76,56 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public Optional<User> getUserById(Long id) {
-        String sql = "SELECT * FROM users WHERE id = ?";
-        List<User> users = jdbcTemplate.query(sql, userRowMapper, id);
-        return users.isEmpty() ? Optional.empty() : Optional.of(users.get(0));
-    }
-
-    @Override
-    public boolean deleteUser(Long id) {
-        String sql = "DELETE FROM users WHERE id = ?";
-        return jdbcTemplate.update(sql, id) > 0;
+        String sql = "SELECT * FROM users WHERE user_id = ?";
+        try {
+            User user = jdbcTemplate.queryForObject(sql, userRowMapper, id);
+            return Optional.ofNullable(user);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
     }
 
     @Override
     public boolean containsUser(Long id) {
-        String sql = "SELECT COUNT(*) FROM users WHERE id = ?";
+        String sql = "SELECT COUNT(*) FROM users WHERE user_id = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
         return count != null && count > 0;
     }
 
     @Override
-    public int getUsersCount() {
-        String sql = "SELECT COUNT(*) FROM users";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
-        return count != null ? count : 0;
-    }
-
     public void addFriend(Long userId, Long friendId) {
-        String sql = "INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, ?)";
-        jdbcTemplate.update(sql, userId, friendId, FriendshipStatus.PENDING.name());
-    }
+        String checkSql = "SELECT COUNT(*) FROM friends WHERE user_id = ? AND friend_id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, userId, friendId);
 
-    public void removeFriend(Long userId, Long friendId) {
-        String sql = "DELETE FROM friendships WHERE user_id = ? AND friend_id = ?";
-        jdbcTemplate.update(sql, userId, friendId);
-    }
-
-    public List<Long> getFriendIds(Long userId) {
-        String sql = "SELECT friend_id FROM friendships WHERE user_id = ?";
-        return jdbcTemplate.queryForList(sql, Long.class, userId);
-    }
-
-    public Map<Long, FriendshipStatus> getFriends(Long userId) {
-        String sql = "SELECT friend_id, status FROM friendships WHERE user_id = ?";
-        Map<Long, FriendshipStatus> friends = new HashMap<>();
-
-        jdbcTemplate.query(sql, (rs) -> {
-            friends.put(rs.getLong("friend_id"),
-                    FriendshipStatus.valueOf(rs.getString("status")));
-        }, userId);
-
-        return friends;
-    }
-
-    public List<User> getFriends(List<Long> friendIds) {
-        if (friendIds.isEmpty()) {
-            return Collections.emptyList();
+        if (count == null || count == 0) {
+            String sql = "INSERT INTO friends (user_id, friend_id) VALUES (?, ?)";
+            jdbcTemplate.update(sql, userId, friendId);
+            log.debug("Дружба добавлена: {} и {}", userId, friendId);
         }
+    }
 
-        String inSql = String.join(",", Collections.nCopies(friendIds.size(), "?"));
-        String sql = "SELECT * FROM users WHERE id IN (" + inSql + ")";
+    @Override
+    public void removeFriend(Long userId, Long friendId) {
+        String sql = "DELETE FROM friends WHERE user_id = ? AND friend_id = ?";
+        jdbcTemplate.update(sql, userId, friendId);
+        log.debug("Дружба удалена: {} и {}", userId, friendId);
+    }
 
-        return jdbcTemplate.query(sql, userRowMapper, friendIds.toArray());
+    @Override
+    public Collection<User> getUserFriends(Long userId) {
+        String sql = "SELECT u.* FROM users u " +
+                     "JOIN friends f ON u.user_id = f.friend_id " +
+                     "WHERE f.user_id = ?";
+        return jdbcTemplate.query(sql, userRowMapper, userId);
+    }
+
+    @Override
+    public Collection<User> getCommonFriends(Long userId, Long otherId) {
+        String sql = "SELECT u.* FROM users u " +
+                     "JOIN friends f1 ON u.user_id = f1.friend_id " +
+                     "JOIN friends f2 ON u.user_id = f2.friend_id " +
+                     "WHERE f1.user_id = ? AND f2.user_id = ?";
+
+        return jdbcTemplate.query(sql, userRowMapper, userId, otherId);
     }
 }
