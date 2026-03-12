@@ -7,7 +7,7 @@ import java.util.Optional;
 public interface MpaStorage {
     List<Mpa> findAll();
 
-    Optional<Mpa> findById(int id);
+    Optional<Mpa> findById(Integer id);
 
-    boolean existsById(int id);
+    boolean existsById(Integer id);
 }
