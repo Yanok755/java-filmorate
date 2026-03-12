@@ -188,7 +188,7 @@ public class FilmDbStorage implements FilmStorage {
         } catch (EmptyResultDataAccessException e) {
             log.debug("Фильм с id {} не найден", id);
         }
-        
+
         return Optional.empty();
     }
 
