@@ -22,8 +22,7 @@ public class GenreService {
     }
 
     public Genre getGenreById(int id) {
-        log.debug("Получение жанра с id: {}", id);
-
+        log.debug("Получение жанра с id {}", id);
         return genreStorage.findById(id)
                 .orElseThrow(() -> {
                     log.error("Жанр с id {} не найден", id);
