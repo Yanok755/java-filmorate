@@ -33,7 +33,7 @@ public class UserService {
     public User updateUser(User user) {
         log.debug("Обновление пользователя с id: {}", user.getId());
 
-        if (user.getId() == null) {
+        if (Objects.isNull(user.getId())) {
             log.error("ID пользователя не может быть null при обновлении");
             throw new ValidationException("ID пользователя должен быть указан");
         }
