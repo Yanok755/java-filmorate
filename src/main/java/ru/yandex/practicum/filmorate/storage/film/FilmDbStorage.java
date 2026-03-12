@@ -26,10 +26,10 @@ import java.util.*;
 public class FilmDbStorage implements FilmStorage {
 
     // SQL константы
-    private static final String SQL_INSERT_FILM = 
+    private static final String SQL_INSERT_FILM =
         "INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES (?, ?, ?, ?, ?)";
 
-    private static final String SQL_UPDATE_FILM = 
+    private static final String SQL_UPDATE_FILM =
         "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? WHERE id = ?";
 
     private static final String SQL_SELECT_ALL_FILMS = "SELECT * FROM films";
@@ -46,7 +46,7 @@ public class FilmDbStorage implements FilmStorage {
 
     private static final String SQL_DELETE_LIKE = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
 
-    private static final String SQL_SELECT_POPULAR_FILMS = 
+    private static final String SQL_SELECT_POPULAR_FILMS =
         "SELECT f.*, COUNT(l.user_id) as likes_count " +
         "FROM films f " +
         "LEFT JOIN likes l ON f.id = l.film_id " +
@@ -58,21 +58,21 @@ public class FilmDbStorage implements FilmStorage {
 
     private static final String SQL_SELECT_LIKES = "SELECT user_id FROM likes WHERE film_id = ?";
 
-    private static final String SQL_SELECT_FILM_GENRES = 
+    private static final String SQL_SELECT_FILM_GENRES =
         "SELECT g.id, g.name FROM genres g " +
         "JOIN film_genres fg ON g.id = fg.genre_id " +
         "WHERE fg.film_id = ? ORDER BY g.id";
 
-    private static final String SQL_SELECT_GENRES_FOR_FILMS = 
+    private static final String SQL_SELECT_GENRES_FOR_FILMS =
         "SELECT fg.film_id, g.id, g.name FROM genres g " +
         "JOIN film_genres fg ON g.id = fg.genre_id " +
         "WHERE fg.film_id IN (%s) " +
         "ORDER BY fg.film_id, g.id";
 
-    private static final String SQL_INSERT_FILM_GENRE = 
+    private static final String SQL_INSERT_FILM_GENRE =
         "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
 
-    private static final String SQL_DELETE_FILM_GENRES = 
+    private static final String SQL_DELETE_FILM_GENRES =
         "DELETE FROM film_genres WHERE film_id = ?";
 
     private final JdbcTemplate jdbcTemplate;
