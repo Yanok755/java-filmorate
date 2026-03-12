@@ -86,10 +86,23 @@ public class UserDbStorage implements UserStorage {
     }
 
     @Override
+    public boolean deleteUser(Long id) {
+        String sql = "DELETE FROM users WHERE user_id = ?";
+        int deleted = jdbcTemplate.update(sql, id);
+        return deleted > 0;
+    }
+
+    @Override
     public boolean containsUser(Long id) {
         String sql = "SELECT COUNT(*) FROM users WHERE user_id = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
-        return count != null && count > 0;
+        return count > 0;
+    }
+
+    @Override
+    public int getUsersCount() {
+        String sql = "SELECT COUNT(*) FROM users";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
     }
 
     @Override
@@ -97,7 +110,7 @@ public class UserDbStorage implements UserStorage {
         String checkSql = "SELECT COUNT(*) FROM friends WHERE user_id = ? AND friend_id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, userId, friendId);
 
-        if (count == null || count == 0) {
+        if (count == 0) {
             String sql = "INSERT INTO friends (user_id, friend_id) VALUES (?, ?)";
             jdbcTemplate.update(sql, userId, friendId);
             log.debug("Дружба добавлена: {} и {}", userId, friendId);
