@@ -2,9 +2,9 @@ package ru.yandex.practicum.filmorate.storage;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Mpa;
+import ru.yandex.practicum.filmorate.storage.mpa.mapper.MpaRowMapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,32 +13,28 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MpaDbStorage implements MpaStorage {
 
-    private final JdbcTemplate jdbcTemplate;
+    private static final String SQL_SELECT_ALL = "SELECT * FROM mpa_ratings ORDER BY id";
+    private static final String SQL_SELECT_BY_ID = "SELECT * FROM mpa_ratings WHERE id = ?";
+    private static final String SQL_EXISTS_BY_ID = "SELECT COUNT(*) FROM mpa_ratings WHERE id = ?";
 
-    private final RowMapper<Mpa> mpaRowMapper = (rs, rowNum) -> {
-        Mpa mpa = new Mpa();
-        mpa.setId(rs.getInt("id"));
-        mpa.setName(rs.getString("name"));
-        return mpa;
-    };
+    private final JdbcTemplate jdbcTemplate;
+    private final MpaRowMapper mpaRowMapper;
 
     @Override
     public List<Mpa> findAll() {
-        String sql = "SELECT * FROM mpa_ratings ORDER BY id";
-        return jdbcTemplate.query(sql, mpaRowMapper);
+        return jdbcTemplate.query(SQL_SELECT_ALL, mpaRowMapper);
     }
 
     @Override
     public Optional<Mpa> findById(int id) {
-        String sql = "SELECT * FROM mpa_ratings WHERE id = ?";
-        List<Mpa> mpas = jdbcTemplate.query(sql, mpaRowMapper, id);
-        return mpas.isEmpty() ? Optional.empty() : Optional.of(mpas.get(0));
+        return jdbcTemplate.query(SQL_SELECT_BY_ID, mpaRowMapper, id)
+                .stream()
+                .findFirst();
     }
 
     @Override
     public boolean existsById(int id) {
-        String sql = "SELECT COUNT(*) FROM mpa_ratings WHERE id = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
+        Integer count = jdbcTemplate.queryForObject(SQL_EXISTS_BY_ID, Integer.class, id);
         return count != null && count > 0;
     }
 }
