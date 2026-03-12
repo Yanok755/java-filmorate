@@ -2,81 +2,93 @@ package ru.yandex.practicum.filmorate.storage.film;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import ru.yandex.practicum.filmorate.model.Mpa;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 public class InMemoryFilmStorage implements FilmStorage {
 
     private final Map<Long, Film> films = new HashMap<>();
-    private long currentId = 0;
+    private final Map<Long, Set<Long>> likes = new HashMap<>();
+    private long nextId = 1;
 
     @Override
     public Film createFilm(Film film) {
-        film.setId(getNextId());
+        film.setId(nextId++);
         films.put(film.getId(), film);
-
-        log.debug("Фильм сохранен: id={}, название='{}'", film.getId(), film.getName());
+        likes.put(film.getId(), new HashSet<>());
         return film;
     }
 
     @Override
     public Film updateFilm(Film film) {
-        Film existingFilm = films.get(film.getId());
-
-        existingFilm.setName(film.getName());
-        existingFilm.setDescription(film.getDescription());
-        existingFilm.setReleaseDate(film.getReleaseDate());
-        existingFilm.setDuration(film.getDuration());
-        existingFilm.setMpa(film.getMpa());
-        existingFilm.setGenres(film.getGenres());
-
-        log.debug("Фильм обновлен: id={}", film.getId());
-        return existingFilm;
+        if (!films.containsKey(film.getId())) {
+            throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
+        }
+        films.put(film.getId(), film);
+        return film;
     }
 
     @Override
     public Collection<Film> findAllFilms() {
-        log.debug("Получены все фильмы. Всего: {} фильмов", films.size());
         return films.values();
     }
 
     @Override
     public Optional<Film> getFilmById(Long id) {
-        log.trace("Поиск фильма по id: {}", id);
         return Optional.ofNullable(films.get(id));
     }
 
     @Override
-    public boolean deleteFilm(Long id) {
-        if (films.containsKey(id)) {
-            films.remove(id);
-            log.debug("Фильм удален: id={}", id);
-            return true;
-        }
-        log.warn("Попытка удалить несуществующий фильм: id={}", id);
-        return false;
-    }
-
-    @Override
     public boolean containsFilm(Long id) {
-        boolean exists = films.containsKey(id);
-        log.trace("Проверка существования фильма id={}: {}", id, exists);
-        return exists;
+        return films.containsKey(id);
     }
 
     @Override
-    public int getFilmsCount() {
-        int count = films.size();
-        log.trace("Текущее количество фильмов: {}", count);
-        return count;
+    public void addLike(Long filmId, Long userId) {
+        Set<Long> filmLikes = likes.computeIfAbsent(filmId, k -> new HashSet<>());
+        filmLikes.add(userId);
     }
 
-    private long getNextId() {
-        return ++currentId;
+    @Override
+    public void removeLike(Long filmId, Long userId) {
+        Set<Long> filmLikes = likes.get(filmId);
+        if (filmLikes != null) {
+            filmLikes.remove(userId);
+        }
+    }
+
+    @Override
+    public Collection<Film> getMostPopularFilms(Integer limit) {
+        return films.values().stream()
+                .sorted((f1, f2) -> {
+                    int likes1 = getLikesCount(f1.getId());
+                    int likes2 = getLikesCount(f2.getId());
+                    return Integer.compare(likes2, likes1);
+                })
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public int getLikesCount(Long filmId) {
+        Set<Long> filmLikes = likes.get(filmId);
+        return filmLikes != null ? filmLikes.size() : 0;
+    }
+
+    @Override
+    public Set<Long> getFilmLikes(Long filmId) {
+        return likes.getOrDefault(filmId, new HashSet<>());
+    }
+
+    @Override
+    public Mpa getMpaById(Integer id) {
+        // In-memory реализация не имеет доступа к MPA
+        throw new UnsupportedOperationException("InMemoryFilmStorage не поддерживает получение MPA по ID");
     }
 }
