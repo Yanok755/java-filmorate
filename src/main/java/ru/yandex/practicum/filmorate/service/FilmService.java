@@ -78,7 +78,6 @@ public class FilmService {
         getFilmById(filmId);
         userService.getUserById(userId);
 
-        // ИСПРАВЛЕНО: вызываем метод интерфейса, а не конкретной реализации
         filmStorage.addLike(filmId, userId);
         log.info("Лайк успешно добавлен: фильм {}, пользователь {}", filmId, userId);
     }
@@ -89,7 +88,6 @@ public class FilmService {
         getFilmById(filmId);
         userService.getUserById(userId);
 
-        // ИСПРАВЛЕНО: вызываем метод интерфейса, а не конкретной реализации
         filmStorage.removeLike(filmId, userId);
         log.info("Лайк успешно удален: фильм {}, пользователь {}", filmId, userId);
     }
@@ -98,7 +96,6 @@ public class FilmService {
         int limit = count != null ? count : 10;
         log.debug("Получение топ-{} популярных фильмов", limit);
 
-        // ИСПРАВЛЕНО: используем метод интерфейса
         Collection<Film> films = filmStorage.getMostPopularFilms(limit);
 
         return films.stream()
