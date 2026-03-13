@@ -10,6 +10,7 @@ import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -98,10 +99,10 @@ class UserDbStorageTest {
 
         userStorage.addFriend(created1.getId(), created2.getId());
 
-        List<Long> friends = userStorage.getFriendIds(created1.getId());
+        Collection<Long> friends = userStorage.getFriendIds(created1.getId());
         assertThat(friends).contains(created2.getId());
 
-        List<Long> friends2 = userStorage.getFriendIds(created2.getId());
+        Collection<Long> friends2 = userStorage.getFriendIds(created2.getId());
         assertThat(friends2).doesNotContain(created1.getId());
     }
 
@@ -125,7 +126,7 @@ class UserDbStorageTest {
         userStorage.addFriend(created1.getId(), created2.getId());
         userStorage.removeFriend(created1.getId(), created2.getId());
 
-        List<Long> friends = userStorage.getFriendIds(created1.getId());
+        Collection<Long> friends = userStorage.getFriendIds(created1.getId());
         assertThat(friends).doesNotContain(created2.getId());
     }
 }
