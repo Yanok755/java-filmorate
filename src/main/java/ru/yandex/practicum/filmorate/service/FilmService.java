@@ -11,7 +11,7 @@ import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.GenreStorage;
 import ru.yandex.practicum.filmorate.storage.MpaStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -71,7 +71,8 @@ public class FilmService {
 
     public Film getFilmById(Long id) {
         log.debug("Получение фильма с id: {}", id);
-        Film film = filmStorage.getFilmById(id);
+        Film film = filmStorage.getFilmById(id)
+                .orElseThrow(() -> new NotFoundException("Фильм с id " + id + " не найден"));
         return enrichFilmWithDetails(film);
     }
 
