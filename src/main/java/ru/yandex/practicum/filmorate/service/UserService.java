@@ -11,8 +11,6 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -64,7 +62,8 @@ public class UserService {
 
     public User getUserById(Long id) {
         log.debug("Получение пользователя с id: {}", id);
-        return userStorage.getUserById(id);
+        return userStorage.getUserById(id)
+                .orElseThrow(() -> new NotFoundException("Пользователь с id " + id + " не найден"));
     }
 
     public void addFriend(Long userId, Long friendId) {
@@ -92,10 +91,7 @@ public class UserService {
 
         validateUserExists(userId);
 
-        Set<Long> friendIds = userStorage.getUserFriends(userId);
-        return friendIds.stream()
-                .map(userStorage::getUserById)
-                .collect(Collectors.toList());
+        return userStorage.getFriendsAsUsers(userId);
     }
 
     public Collection<User> getCommonFriends(Long userId, Long otherId) {
@@ -104,13 +100,7 @@ public class UserService {
         validateUserExists(userId);
         validateUserExists(otherId);
 
-        Set<Long> userFriends = userStorage.getUserFriends(userId);
-        Set<Long> otherFriends = userStorage.getUserFriends(otherId);
-
-        return userFriends.stream()
-                .filter(otherFriends::contains)
-                .map(userStorage::getUserById)
-                .collect(Collectors.toList());
+        return userStorage.getCommonFriends(userId, otherId);
     }
 
     private void validateUserExists(Long userId) {
