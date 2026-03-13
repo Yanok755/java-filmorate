@@ -26,14 +26,14 @@ public class MpaDbStorage implements MpaStorage {
     }
 
     @Override
-    public Optional<Mpa> findById(int id) {
+    public Optional<Mpa> findById(Integer id) {
         return jdbcTemplate.query(SQL_SELECT_BY_ID, mpaRowMapper, id)
                 .stream()
                 .findFirst();
     }
 
     @Override
-    public boolean existsById(int id) {
+    public boolean existsById(Integer id) {
         Integer count = jdbcTemplate.queryForObject(SQL_EXISTS_BY_ID, Integer.class, id);
         return count != null && count > 0;
     }
