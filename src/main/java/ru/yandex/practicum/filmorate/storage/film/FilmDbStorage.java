@@ -144,16 +144,19 @@ public class FilmDbStorage implements FilmStorage {
         return count != null ? count : 0;
     }
 
+    @Override
     public void addLike(Long filmId, Long userId) {
         String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
         jdbcTemplate.update(sql, filmId, userId);
     }
 
+    @Override
     public void removeLike(Long filmId, Long userId) {
         String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
         jdbcTemplate.update(sql, filmId, userId);
     }
 
+    @Override
     public Collection<Film> getMostPopularFilms(int count) {
         String sql = "SELECT f.*, COUNT(l.user_id) as likes_count " +
                 "FROM films f " +
@@ -219,9 +222,7 @@ public class FilmDbStorage implements FilmStorage {
         Map<Integer, String> mpaNamesMap = new HashMap<>();
 
         jdbcTemplate.query(sql, (rs) -> {
-            int id = rs.getInt("id");
-            String name = rs.getString("name");
-            mpaNamesMap.put(id, name);
+            mpaNamesMap.put(rs.getInt("id"), rs.getString("name"));
         });
 
         return mpaNamesMap;
