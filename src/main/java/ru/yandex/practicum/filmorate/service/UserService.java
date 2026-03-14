@@ -7,10 +7,8 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
-import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
 import java.util.Collection;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -48,46 +46,48 @@ public class UserService {
     }
 
     public void addFriend(Long userId, Long friendId) {
+        // Проверяем существование пользователей
         getUserById(userId);
         getUserById(friendId);
+
         if (userId.equals(friendId)) {
             throw new ValidationException("Нельзя добавить самого себя в друзья");
         }
-        if (userStorage instanceof UserDbStorage) {
-            ((UserDbStorage) userStorage).addFriend(userId, friendId);
-        }
+
+        // Вызываем метод интерфейса - никаких instanceof!
+        userStorage.addFriend(userId, friendId);
+        log.info("Пользователь {} добавил в друзья {}", userId, friendId);
     }
 
     public void removeFriend(Long userId, Long friendId) {
+        // Проверяем существование пользователей
         getUserById(userId);
         getUserById(friendId);
-        if (userStorage instanceof UserDbStorage) {
-            ((UserDbStorage) userStorage).removeFriend(userId, friendId);
-        }
+
+        // Вызываем метод интерфейса
+        userStorage.removeFriend(userId, friendId);
+        log.info("Пользователь {} удалил из друзей {}", userId, friendId);
     }
 
     public Collection<User> getUserFriends(Long userId) {
+        // Проверяем существование пользователя
         getUserById(userId);
-        if (userStorage instanceof UserDbStorage) {
-            List<Long> friendIds = ((UserDbStorage) userStorage).getFriendIds(userId);
-            return ((UserDbStorage) userStorage).getFriends(friendIds);
-        }
-        return List.of();
+
+        // Вызываем метод интерфейса
+        return userStorage.getUserFriends(userId);
     }
 
     public Collection<User> getCommonFriends(Long userId, Long otherId) {
+        // Проверяем существование пользователей
         getUserById(userId);
         getUserById(otherId);
-        if (userStorage instanceof UserDbStorage) {
-            List<Long> userFriends = ((UserDbStorage) userStorage).getFriendIds(userId);
-            List<Long> otherFriends = ((UserDbStorage) userStorage).getFriendIds(otherId);
 
-            List<Long> commonIds = userFriends.stream()
-                    .filter(otherFriends::contains)
-                    .toList();
+        // Вызываем метод интерфейса
+        Collection<User> commonFriends = userStorage.getCommonFriends(userId, otherId);
 
-            return ((UserDbStorage) userStorage).getFriends(commonIds);
-        }
-        return List.of();
+        log.info("Найдено {} общих друзей для пользователей {} и {}", 
+                commonFriends.size(), userId, otherId);
+
+        return commonFriends;
     }
 }
