@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.Collection;
@@ -40,39 +39,38 @@ public class FilmService {
     }
 
     public void addLike(Long filmId, Long userId) {
+        // Проверяем существование фильма
         getFilmById(filmId);
+
+        // Проверяем существование пользователя
         if (!userStorage.containsUser(userId)) {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
-        if (filmStorage instanceof FilmDbStorage) {
-            ((FilmDbStorage) filmStorage).addLike(filmId, userId);
-        }
+
+        // Вызываем метод интерфейса - никаких instanceof!
+        filmStorage.addLike(filmId, userId);
+        log.info("Лайк добавлен к фильму {} от пользователя {}", filmId, userId);
     }
 
     public void removeLike(Long filmId, Long userId) {
+        // Проверяем существование фильма
         getFilmById(filmId);
+
+        // Проверяем существование пользователя
         if (!userStorage.containsUser(userId)) {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
-        if (filmStorage instanceof FilmDbStorage) {
-            ((FilmDbStorage) filmStorage).removeLike(filmId, userId);
-        }
+
+        // Вызываем метод интерфейса
+        filmStorage.removeLike(filmId, userId);
+        log.info("Лайк удален у фильма {} от пользователя {}", filmId, userId);
     }
 
     public Collection<Film> getMostPopularFilms(Integer count) {
         int limit = count != null ? count : 10;
-        if (filmStorage instanceof FilmDbStorage) {
-            return ((FilmDbStorage) filmStorage).getMostPopularFilms(limit);
-        }
-        return filmStorage.findAllFilms().stream()
-                .sorted((f1, f2) -> {
-                    int likes1 = filmStorage instanceof FilmDbStorage ?
-                            ((FilmDbStorage) filmStorage).getLikesCount(f1.getId()) : 0;
-                    int likes2 = filmStorage instanceof FilmDbStorage ?
-                            ((FilmDbStorage) filmStorage).getLikesCount(f2.getId()) : 0;
-                    return Integer.compare(likes2, likes1);
-                })
-                .limit(limit)
-                .toList();
+        log.info("Запрос топ-{} популярных фильмов", limit);
+
+        // Вызываем метод интерфейса
+        return filmStorage.getMostPopularFilms(limit);
     }
 }
