@@ -109,22 +109,59 @@ public class UserDbStorage implements UserStorage {
         return count != null ? count : 0;
     }
 
+    @Override
     public void addFriend(Long userId, Long friendId) {
         String sql = "INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, ?)";
         jdbcTemplate.update(sql, userId, friendId, FriendshipStatus.PENDING.name());
+        log.debug("Добавлен друг: пользователь {} добавил {}", userId, friendId);
     }
 
+    @Override
     public void removeFriend(Long userId, Long friendId) {
         String sql = "DELETE FROM friendships WHERE user_id = ? AND friend_id = ?";
         jdbcTemplate.update(sql, userId, friendId);
+        log.debug("Удален друг: пользователь {} удалил {}", userId, friendId);
     }
 
+    @Override
+    public Collection<User> getUserFriends(Long userId) {
+        String sql = """
+            SELECT u.* FROM users u
+            WHERE u.id IN (
+                SELECT friend_id FROM friendships WHERE user_id = ?
+            )
+            ORDER BY u.id
+        """;
+
+        return jdbcTemplate.query(sql, userRowMapper, userId);
+    }
+
+    @Override
+    public Collection<User> getCommonFriends(Long userId, Long otherUserId) {
+        // Эффективный SQL запрос для поиска общих друзей через JOIN
+        String sql = """
+            SELECT u.* FROM users u
+            WHERE u.id IN (
+                SELECT f1.friend_id
+                FROM friendships f1
+                INNER JOIN friendships f2 ON f1.friend_id = f2.friend_id
+                WHERE f1.user_id = ? AND f2.user_id = ?
+            )
+            ORDER BY u.id
+        """;
+
+        log.debug("Поиск общих друзей для пользователей {} и {}", userId, otherUserId);
+
+        return jdbcTemplate.query(sql, userRowMapper, userId, otherUserId);
+    }
+
+    // Вспомогательные методы (можно оставить для внутреннего использования)
     public List<Long> getFriendIds(Long userId) {
         String sql = "SELECT friend_id FROM friendships WHERE user_id = ?";
         return jdbcTemplate.queryForList(sql, Long.class, userId);
     }
 
-    public Map<Long, FriendshipStatus> getFriends(Long userId) {
+    public Map<Long, FriendshipStatus> getFriendsWithStatus(Long userId) {
         String sql = "SELECT friend_id, status FROM friendships WHERE user_id = ?";
         Map<Long, FriendshipStatus> friends = new HashMap<>();
 
@@ -136,14 +173,14 @@ public class UserDbStorage implements UserStorage {
         return friends;
     }
 
-    public List<User> getFriends(List<Long> friendIds) {
-        if (friendIds.isEmpty()) {
+    public List<User> getUsersByIds(List<Long> userIds) {
+        if (userIds.isEmpty()) {
             return Collections.emptyList();
         }
 
-        String inSql = String.join(",", Collections.nCopies(friendIds.size(), "?"));
-        String sql = "SELECT * FROM users WHERE id IN (" + inSql + ")";
+        String inSql = String.join(",", Collections.nCopies(userIds.size(), "?"));
+        String sql = "SELECT * FROM users WHERE id IN (" + inSql + ") ORDER BY id";
 
-        return jdbcTemplate.query(sql, userRowMapper, friendIds.toArray());
+        return jdbcTemplate.query(sql, userRowMapper, userIds.toArray());
     }
 }
