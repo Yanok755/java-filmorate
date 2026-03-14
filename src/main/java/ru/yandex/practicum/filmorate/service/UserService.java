@@ -85,7 +85,7 @@ public class UserService {
         // Вызываем метод интерфейса
         Collection<User> commonFriends = userStorage.getCommonFriends(userId, otherId);
 
-        log.info("Найдено {} общих друзей для пользователей {} и {}", 
+        log.info("Найдено {} общих друзей для пользователей {} и {}",
                 commonFriends.size(), userId, otherId);
 
         return commonFriends;
