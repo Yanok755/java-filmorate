@@ -114,7 +114,7 @@ public class InMemoryUserStorage implements UserStorage {
                 .filter(otherFriends::contains)
                 .collect(Collectors.toSet());
 
-        log.debug("Найдено {} общих друзей для пользователей {} и {}", 
+        log.debug("Найдено {} общих друзей для пользователей {} и {}",
                 commonFriendIds.size(), userId, otherUserId);
 
         // Получаем объекты пользователей
