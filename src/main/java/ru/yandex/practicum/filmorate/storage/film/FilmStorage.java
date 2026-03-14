@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface FilmStorage {
+
     Film createFilm(Film film);
 
     Film updateFilm(Film film);
@@ -18,4 +19,10 @@ public interface FilmStorage {
     boolean containsFilm(Long id);
 
     int getFilmsCount();
+
+    void addLike(Long filmId, Long userId);
+
+    void removeLike(Long filmId, Long userId);
+
+    Collection<Film> getMostPopularFilms(int count);
 }
