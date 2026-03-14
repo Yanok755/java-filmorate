@@ -3,15 +3,14 @@ package ru.yandex.practicum.filmorate.storage.film;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.storage.mapper.FilmRowMapper;
-import ru.yandex.practicum.filmorate.storage.MpaStorage;
+import ru.yandex.practicum.filmorate.model.Mpa;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -24,57 +23,20 @@ import java.util.*;
 @Primary
 public class FilmDbStorage implements FilmStorage {
 
-    // SQL константы для фильмов
-    private static final String SQL_INSERT_FILM = "INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES (?, ?, ?, ?, ?)";
-    private static final String SQL_UPDATE_FILM = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? WHERE id = ?";
-    private static final String SQL_SELECT_ALL_FILMS = "SELECT * FROM films";
-    private static final String SQL_SELECT_FILM_BY_ID = "SELECT * FROM films WHERE id = ?";
-    private static final String SQL_DELETE_FILM = "DELETE FROM films WHERE id = ?";
-    private static final String SQL_COUNT_FILMS = "SELECT COUNT(*) FROM films";
-    private static final String SQL_EXISTS_FILM = "SELECT COUNT(*) FROM films WHERE id = ?";
-
-    // SQL константы для лайков
-    private static final String SQL_INSERT_LIKE = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
-    private static final String SQL_DELETE_LIKE = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
-    private static final String SQL_SELECT_LIKES_FOR_FILM = "SELECT user_id FROM likes WHERE film_id = ?";
-    private static final String SQL_COUNT_LIKES_FOR_FILM = "SELECT COUNT(*) FROM likes WHERE film_id = ?";
-    private static final String SQL_SELECT_POPULAR_FILMS =
-            "SELECT f.*, COUNT(l.user_id) as likes_count " +
-            "FROM films f " +
-            "LEFT JOIN likes l ON f.id = l.film_id " +
-            "GROUP BY f.id " +
-            "ORDER BY likes_count DESC " +
-            "LIMIT ?";
-
-    // SQL константы для жанров
-    private static final String SQL_INSERT_FILM_GENRE = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
-    private static final String SQL_DELETE_FILM_GENRES = "DELETE FROM film_genres WHERE film_id = ?";
-    private static final String SQL_SELECT_GENRES_FOR_FILM =
-            "SELECT g.id, g.name FROM genres g " +
-            "JOIN film_genres fg ON g.id = fg.genre_id " +
-            "WHERE fg.film_id = ? ORDER BY g.id";
-    private static final String SQL_SELECT_GENRES_FOR_FILMS =
-            "SELECT fg.film_id, g.id, g.name FROM genres g " +
-            "JOIN film_genres fg ON g.id = fg.genre_id " +
-            "WHERE fg.film_id IN (%s) " +
-            "ORDER BY fg.film_id, g.id";
-
     private final JdbcTemplate jdbcTemplate;
-    private final FilmRowMapper filmRowMapper;
-    private final MpaStorage mpaStorage;
 
-    public FilmDbStorage(JdbcTemplate jdbcTemplate, FilmRowMapper filmRowMapper, MpaStorage mpaStorage) {
+    public FilmDbStorage(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.filmRowMapper = filmRowMapper;
-        this.mpaStorage = mpaStorage;
     }
 
     @Override
     public Film createFilm(Film film) {
+        String sql = "INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES (?, ?, ?, ?, ?)";
+
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(SQL_INSERT_FILM, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, film.getName());
             ps.setString(2, film.getDescription());
             ps.setDate(3, Date.valueOf(film.getReleaseDate()));
@@ -99,9 +61,11 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Film updateFilm(Film film) {
+        String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? WHERE id = ?";
+
         int mpaId = film.getMpa() != null ? film.getMpa().getId() : 1;
 
-        jdbcTemplate.update(SQL_UPDATE_FILM,
+        jdbcTemplate.update(sql,
                 film.getName(),
                 film.getDescription(),
                 Date.valueOf(film.getReleaseDate()),
@@ -120,17 +84,22 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Collection<Film> findAllFilms() {
-        List<Film> films = jdbcTemplate.query(SQL_SELECT_ALL_FILMS, filmRowMapper);
+        String sql = "SELECT * FROM films";
+        List<Film> films = jdbcTemplate.query(sql, filmRowMapper);
 
         if (films.isEmpty()) {
             return films;
         }
 
         Map<Long, Set<Genre>> genresMap = loadGenresForFilms(films);
+        Map<Integer, String> mpaNamesMap = loadAllMpaNames();
 
         for (Film film : films) {
             film.setGenres(genresMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
-            enrichFilmWithMpaName(film);
+
+            if (film.getMpa() != null) {
+                film.getMpa().setName(mpaNamesMap.get(film.getMpa().getId()));
+            }
         }
 
         return films;
@@ -138,82 +107,124 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Optional<Film> getFilmById(Long id) {
-        try {
-            Film film = jdbcTemplate.queryForObject(SQL_SELECT_FILM_BY_ID, filmRowMapper, id);
+        String sql = "SELECT * FROM films WHERE id = ?";
+        List<Film> films = jdbcTemplate.query(sql, filmRowMapper, id);
 
-            if (film != null) {
-                film.setGenres(getGenresForFilm(id));
-                enrichFilmWithMpaName(film);
-                return Optional.of(film);
-            }
-            return Optional.empty();
-
-        } catch (EmptyResultDataAccessException e) {
+        if (films.isEmpty()) {
             return Optional.empty();
         }
+
+        Film film = films.get(0);
+        film.setGenres(getGenresForFilm(id));
+
+        if (film.getMpa() != null) {
+            film.getMpa().setName(getMpaName(film.getMpa().getId()));
+        }
+
+        return Optional.of(film);
     }
 
     @Override
     public boolean deleteFilm(Long id) {
-        return jdbcTemplate.update(SQL_DELETE_FILM, id) > 0;
+        String sql = "DELETE FROM films WHERE id = ?";
+        return jdbcTemplate.update(sql, id) > 0;
     }
 
     @Override
     public boolean containsFilm(Long id) {
-        Integer count = jdbcTemplate.queryForObject(SQL_EXISTS_FILM, Integer.class, id);
+        String sql = "SELECT COUNT(*) FROM films WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
         return count != null && count > 0;
     }
 
     @Override
     public int getFilmsCount() {
-        Integer count = jdbcTemplate.queryForObject(SQL_COUNT_FILMS, Integer.class);
+        String sql = "SELECT COUNT(*) FROM films";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
         return count != null ? count : 0;
     }
 
-    @Override
     public void addLike(Long filmId, Long userId) {
-        jdbcTemplate.update(SQL_INSERT_LIKE, filmId, userId);
+        String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
+        jdbcTemplate.update(sql, filmId, userId);
     }
 
-    @Override
     public void removeLike(Long filmId, Long userId) {
-        jdbcTemplate.update(SQL_DELETE_LIKE, filmId, userId);
+        String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
+        jdbcTemplate.update(sql, filmId, userId);
     }
 
-    @Override
     public Collection<Film> getMostPopularFilms(int count) {
-        List<Film> films = jdbcTemplate.query(SQL_SELECT_POPULAR_FILMS, filmRowMapper, count);
+        String sql = "SELECT f.*, COUNT(l.user_id) as likes_count " +
+                "FROM films f " +
+                "LEFT JOIN likes l ON f.id = l.film_id " +
+                "GROUP BY f.id " +
+                "ORDER BY likes_count DESC " +
+                "LIMIT ?";
+
+        List<Film> films = jdbcTemplate.query(sql, filmRowMapper, count);
 
         if (films.isEmpty()) {
             return films;
         }
 
         Map<Long, Set<Genre>> genresMap = loadGenresForFilms(films);
+        Map<Integer, String> mpaNamesMap = loadAllMpaNames();
 
         for (Film film : films) {
             film.setGenres(genresMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
-            enrichFilmWithMpaName(film);
+
+            if (film.getMpa() != null) {
+                film.getMpa().setName(mpaNamesMap.get(film.getMpa().getId()));
+            }
         }
 
         return films;
     }
 
-    @Override
     public int getLikesCount(Long filmId) {
-        Integer count = jdbcTemplate.queryForObject(SQL_COUNT_LIKES_FOR_FILM, Integer.class, filmId);
+        String sql = "SELECT COUNT(*) FROM likes WHERE film_id = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, filmId);
         return count != null ? count : 0;
     }
 
-    @Override
     public Set<Long> getLikesForFilm(Long filmId) {
-        return new HashSet<>(jdbcTemplate.queryForList(SQL_SELECT_LIKES_FOR_FILM, Long.class, filmId));
+        String sql = "SELECT user_id FROM likes WHERE film_id = ?";
+        return new HashSet<>(jdbcTemplate.queryForList(sql, Long.class, filmId));
     }
 
-    private void enrichFilmWithMpaName(Film film) {
-        if (film.getMpa() != null) {
-            mpaStorage.findById(film.getMpa().getId())
-                    .ifPresent(mpa -> film.getMpa().setName(mpa.getName()));
-        }
+    private final RowMapper<Film> filmRowMapper = (rs, rowNum) -> {
+        Film film = new Film();
+        film.setId(rs.getLong("id"));
+        film.setName(rs.getString("name"));
+        film.setDescription(rs.getString("description"));
+        film.setReleaseDate(rs.getDate("release_date").toLocalDate());
+        film.setDuration(rs.getInt("duration"));
+
+        int mpaId = rs.getInt("mpa_rating_id");
+        Mpa mpa = new Mpa();
+        mpa.setId(mpaId);
+        film.setMpa(mpa);
+
+        return film;
+    };
+
+    private String getMpaName(int id) {
+        String sql = "SELECT name FROM mpa_ratings WHERE id = ?";
+        return jdbcTemplate.queryForObject(sql, String.class, id);
+    }
+
+    private Map<Integer, String> loadAllMpaNames() {
+        String sql = "SELECT id, name FROM mpa_ratings";
+        Map<Integer, String> mpaNamesMap = new HashMap<>();
+
+        jdbcTemplate.query(sql, (rs) -> {
+            int id = rs.getInt("id");
+            String name = rs.getString("name");
+            mpaNamesMap.put(id, name);
+        });
+
+        return mpaNamesMap;
     }
 
     private Map<Long, Set<Genre>> loadGenresForFilms(List<Film> films) {
@@ -226,7 +237,11 @@ public class FilmDbStorage implements FilmStorage {
                 .toList();
 
         String inSql = String.join(",", Collections.nCopies(filmIds.size(), "?"));
-        String sql = String.format(SQL_SELECT_GENRES_FOR_FILMS, inSql);
+
+        String sql = "SELECT fg.film_id, g.id, g.name FROM genres g " +
+                "JOIN film_genres fg ON g.id = fg.genre_id " +
+                "WHERE fg.film_id IN (" + inSql + ") " +
+                "ORDER BY fg.film_id, g.id";
 
         Map<Long, Set<Genre>> genresMap = new HashMap<>();
 
@@ -243,7 +258,11 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     private Set<Genre> getGenresForFilm(Long filmId) {
-        return new LinkedHashSet<>(jdbcTemplate.query(SQL_SELECT_GENRES_FOR_FILM, (rs, rowNum) -> {
+        String sql = "SELECT g.id, g.name FROM genres g " +
+                "JOIN film_genres fg ON g.id = fg.genre_id " +
+                "WHERE fg.film_id = ? ORDER BY g.id";
+
+        return new LinkedHashSet<>(jdbcTemplate.query(sql, (rs, rowNum) -> {
             Genre genre = new Genre();
             genre.setId(rs.getInt("id"));
             genre.setName(rs.getString("name"));
@@ -256,10 +275,12 @@ public class FilmDbStorage implements FilmStorage {
             return;
         }
 
+        String sql = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
+
         for (Genre genre : genres) {
             if (genre != null && genre.getId() >= 1 && genre.getId() <= 6) {
                 try {
-                    jdbcTemplate.update(SQL_INSERT_FILM_GENRE, filmId, genre.getId());
+                    jdbcTemplate.update(sql, filmId, genre.getId());
                 } catch (Exception e) {
                     log.error("Ошибка при сохранении жанра {} для фильма {}: {}", genre, filmId, e.getMessage());
                 }
@@ -268,6 +289,7 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     private void deleteGenres(Long filmId) {
-        jdbcTemplate.update(SQL_DELETE_FILM_GENRES, filmId);
+        String sql = "DELETE FROM film_genres WHERE film_id = ?";
+        jdbcTemplate.update(sql, filmId);
     }
 }
