@@ -4,13 +4,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.mapper.UserRowMapper;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -24,12 +23,20 @@ import java.util.*;
 public class UserDbStorage implements UserStorage {
 
     private final JdbcTemplate jdbcTemplate;
-    private final UserRowMapper userRowMapper;
 
-    public UserDbStorage(JdbcTemplate jdbcTemplate, UserRowMapper userRowMapper) {
+    public UserDbStorage(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.userRowMapper = userRowMapper;
     }
+
+    private final RowMapper<User> userRowMapper = (rs, rowNum) -> {
+        User user = new User();
+        user.setId(rs.getLong("id"));
+        user.setEmail(rs.getString("email"));
+        user.setLogin(rs.getString("login"));
+        user.setName(rs.getString("name"));
+        user.setBirthday(rs.getDate("birthday").toLocalDate());
+        return user;
+    };
 
     @Override
     public User createUser(User user) {
@@ -51,7 +58,6 @@ public class UserDbStorage implements UserStorage {
             user.setId(key.longValue());
         }
 
-        log.debug("Пользователь создан в БД: id={}", user.getId());
         return user;
     }
 
@@ -59,7 +65,7 @@ public class UserDbStorage implements UserStorage {
     public User updateUser(User user) {
         String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE id = ?";
 
-        int updated = jdbcTemplate.update(sql,
+        jdbcTemplate.update(sql,
                 user.getEmail(),
                 user.getLogin(),
                 user.getName(),
@@ -67,17 +73,12 @@ public class UserDbStorage implements UserStorage {
                 user.getId()
         );
 
-        if (updated == 0) {
-            throw new NotFoundException("Пользователь с id " + user.getId() + " не найден");
-        }
-
-        log.debug("Пользователь обновлен в БД: id={}", user.getId());
         return user;
     }
 
     @Override
     public Collection<User> findAllUsers() {
-        String sql = "SELECT * FROM users ORDER BY id";
+        String sql = "SELECT * FROM users";
         return jdbcTemplate.query(sql, userRowMapper);
     }
 
@@ -90,18 +91,8 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public boolean deleteUser(Long id) {
-        // Сначала удаляем связи дружбы
-        String deleteFriendshipsSql = "DELETE FROM friendships WHERE user_id = ? OR friend_id = ?";
-        jdbcTemplate.update(deleteFriendshipsSql, id, id);
-
-        // Затем удаляем пользователя
-        String deleteUserSql = "DELETE FROM users WHERE id = ?";
-        int deleted = jdbcTemplate.update(deleteUserSql, id);
-
-        if (deleted > 0) {
-            log.debug("Пользователь удален из БД: id={}", id);
-        }
-        return deleted > 0;
+        String sql = "DELETE FROM users WHERE id = ?";
+        return jdbcTemplate.update(sql, id) > 0;
     }
 
     @Override
@@ -118,31 +109,22 @@ public class UserDbStorage implements UserStorage {
         return count != null ? count : 0;
     }
 
-    @Override
     public void addFriend(Long userId, Long friendId) {
         String sql = "INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, ?)";
         jdbcTemplate.update(sql, userId, friendId, FriendshipStatus.PENDING.name());
-        jdbcTemplate.update(sql, friendId, userId, FriendshipStatus.PENDING.name());
-
-        log.debug("Дружба добавлена в БД: пользователь {} добавил пользователя {}", userId, friendId);
     }
 
-    @Override
     public void removeFriend(Long userId, Long friendId) {
-        String sql = "DELETE FROM friendships WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)";
-        jdbcTemplate.update(sql, userId, friendId, friendId, userId);
-
-        log.debug("Дружба удалена из БД: пользователь {} удалил пользователя {}", userId, friendId);
+        String sql = "DELETE FROM friendships WHERE user_id = ? AND friend_id = ?";
+        jdbcTemplate.update(sql, userId, friendId);
     }
 
-    @Override
-    public Collection<Long> getFriendIds(Long userId) {
+    public List<Long> getFriendIds(Long userId) {
         String sql = "SELECT friend_id FROM friendships WHERE user_id = ?";
         return jdbcTemplate.queryForList(sql, Long.class, userId);
     }
 
-    @Override
-    public Map<Long, FriendshipStatus> getFriendsWithStatus(Long userId) {
+    public Map<Long, FriendshipStatus> getFriends(Long userId) {
         String sql = "SELECT friend_id, status FROM friendships WHERE user_id = ?";
         Map<Long, FriendshipStatus> friends = new HashMap<>();
 
@@ -154,54 +136,14 @@ public class UserDbStorage implements UserStorage {
         return friends;
     }
 
-    @Override
-    public Collection<User> getFriendsAsUsers(Long userId) {
-        String sql = """
-            SELECT u.* FROM users u
-            INNER JOIN friendships f ON u.id = f.friend_id
-            WHERE f.user_id = ?
-            ORDER BY u.id
-        """;
+    public List<User> getFriends(List<Long> friendIds) {
+        if (friendIds.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        return jdbcTemplate.query(sql, userRowMapper, userId);
-    }
+        String inSql = String.join(",", Collections.nCopies(friendIds.size(), "?"));
+        String sql = "SELECT * FROM users WHERE id IN (" + inSql + ")";
 
-    @Override
-    public Collection<User> getCommonFriends(Long userId, Long otherId) {
-        String sql = """
-            SELECT u.* FROM users u
-            WHERE u.id IN (
-                SELECT f1.friend_id
-                FROM friendships f1
-                INNER JOIN friendships f2 ON f1.friend_id = f2.friend_id
-                WHERE f1.user_id = ? AND f2.user_id = ?
-            )
-            ORDER BY u.id
-        """;
-
-        return jdbcTemplate.query(sql, userRowMapper, userId, otherId);
-    }
-
-    @Override
-    public boolean areFriends(Long userId, Long otherId) {
-        String sql = "SELECT COUNT(*) FROM friendships WHERE user_id = ? AND friend_id = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId, otherId);
-        return count != null && count > 0;
-    }
-
-    @Override
-    public int getFriendsCount(Long userId) {
-        String sql = "SELECT COUNT(*) FROM friendships WHERE user_id = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId);
-        return count != null ? count : 0;
-    }
-
-    @Override
-    public void updateFriendshipStatus(Long userId, Long friendId, FriendshipStatus status) {
-        String sql = "UPDATE friendships SET status = ? WHERE user_id = ? AND friend_id = ?";
-        jdbcTemplate.update(sql, status.name(), userId, friendId);
-        jdbcTemplate.update(sql, status.name(), friendId, userId);
-
-        log.debug("Статус дружбы обновлен в БД: пользователи {} и {}, статус {}", userId, friendId, status);
+        return jdbcTemplate.query(sql, userRowMapper, friendIds.toArray());
     }
 }
