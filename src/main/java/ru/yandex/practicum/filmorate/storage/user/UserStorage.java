@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface UserStorage {
+
     User createUser(User user);
 
     User updateUser(User user);
@@ -18,4 +19,12 @@ public interface UserStorage {
     boolean containsUser(Long id);
 
     int getUsersCount();
+
+    void addFriend(Long userId, Long friendId);
+
+    void removeFriend(Long userId, Long friendId);
+
+    Collection<User> getUserFriends(Long userId);
+
+    Collection<User> getCommonFriends(Long userId, Long otherUserId);
 }
