@@ -34,17 +34,16 @@ class FilmControllerTest {
     void setUp() {
         filmStorage = new InMemoryFilmStorage();
         userStorage = new InMemoryUserStorage();
+        filmService = new FilmService(filmStorage, userStorage);
+
         genreStorage = mock(GenreStorage.class);
         mpaStorage = mock(MpaStorage.class);
-        filmService = new FilmService(filmStorage, userStorage, genreStorage, mpaStorage);
-
-
 
         when(mpaStorage.existsById(3)).thenReturn(true);
         when(genreStorage.existsById(1)).thenReturn(true);
         when(genreStorage.existsById(6)).thenReturn(true);
 
-        filmController = new FilmController(filmService);
+        filmController = new FilmController(filmService, genreStorage, mpaStorage);
 
         Mpa mpa = new Mpa();
         mpa.setId(3);
